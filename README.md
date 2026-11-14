@@ -47,7 +47,7 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 
 You don't have to type any paths. By default it scans the **Expansions** and **Samples** folders at the top of every drive (the internal drive, SD cards and USB sticks). On the **SETUP** page you can pick any folder at the top of a drive instead, and narrow it to one folder inside it. Press **RESCAN** after changing it. The sample list is saved, so it starts quickly next time.
 
-**WAV** (8, 16, 24 and 32-bit, float, mono or stereo, any sample rate) and **AIFF** are read.
+**WAV** (8, 16, 24 and 32-bit, float, mono or stereo, any sample rate) **AIFF** and **MP3** are read. An MP3 pad is saved as a WAV when you export the kit, because the MPC loads WAVs beside a program.
 
 ## Exported kits
 

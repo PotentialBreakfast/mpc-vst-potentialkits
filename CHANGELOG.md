@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.1.0 (2026-11-14)
+- **MP3 sounds.** MP3 files in your sound folders are found and played like WAV and AIFF. When you export a kit, an MP3 pad is saved as a WAV beside the program, because the MPC loads WAVs there.
 - **Fixed: SAVE, then a USER KITS slot, saved nothing.** One touch on a button reaches the plugin as two quick flips (on, then straight back off); SAVE switched itself off before the slot tap. The second flip is now ignored and SAVE stays lit until you tap a slot.
 - **Fixed: LOCK unlocked straight away** (the * showed for a moment), for the same reason.
 - **Simpler pages:** KIT, STYLES, SAVE, SETUP. The POOL page is gone: **TYPE** on the KIT page picks what a pad plays (AUTO, KICK, SNARE ... BASS, SYNTH ... VOX, OTHER) and gives the pad a new sound of that type in one tap. **ROLL** is on the KIT page too.

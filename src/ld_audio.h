@@ -1,6 +1,12 @@
 /* Lucky Dip audio helpers: WAV/AIFF header walk (frame count, as the XPM export needs), decode to
- * 44.1 kHz int16 stereo for the pad voices, and RMS (wav_info.mjs, wav_rms.mjs). No host code. */
+ * 44.1 kHz int16 stereo for the pad voices, and RMS (wav_info.mjs, wav_rms.mjs). No host code.
+ * PotentialKits 1.1.0: MP3 too, through dr_mp3 (dr_libs, public domain / MIT-0), compiled static into each file that
+ * includes this header, so the tests and tools need nothing extra. */
 #pragma once
+#define DRMP3_API static
+#define DR_MP3_IMPLEMENTATION
+#include "vendor/dr_mp3.h"
+#include <ctype.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -146,8 +152,21 @@ inline bool sample_at(const std::vector<uint8_t> &b, const Fmt &f, uint32_t i, i
 
 inline bool parse_any(const std::vector<uint8_t> &b, Fmt &f) { return parse_wav(b, f) || parse_aiff(b, f); }
 
+inline bool is_mp3(const std::string &path) {
+    size_t n = path.size();
+    return n > 4 && path[n - 4] == '.' && tolower((unsigned char)path[n - 3]) == 'm' && tolower((unsigned char)path[n - 2]) == 'p' &&
+           path[n - 1] == '3';
+}
+
 /* Source frame count from the header alone (the XPM's SliceEnd: 0 plays silence on real hardware). 0 = unreadable. */
 inline uint32_t frame_count(const std::string &path) {
+    if (is_mp3(path)) {   /* an MP3 has no length in its header: count by decoding (the export writes MP3 pads as WAV anyway) */
+        drmp3 m;
+        if (!drmp3_init_file(&m, path.c_str(), NULL)) return 0;
+        drmp3_uint64 n = drmp3_get_pcm_frame_count(&m);
+        drmp3_uninit(&m);
+        return n > 0xFFFFFFFFull ? 0xFFFFFFFFu : (uint32_t)n;
+    }
     FILE *fp = fopen(path.c_str(), "rb");
     if (!fp) return 0;
     std::vector<uint8_t> b(64 * 1024);
@@ -166,7 +185,42 @@ inline uint32_t frame_count(const std::string &path) {
 
 /* Decode to 44.1 kHz int16 stereo (mono is duplicated, >2 channels keep the first two, other rates are
  * linearly resampled) and measure the RMS over the source. At most MAX_FRAMES are kept. */
+inline bool decode_mp3(const std::string &path, Pcm &out) {
+    drmp3 m;
+    if (!drmp3_init_file(&m, path.c_str(), NULL)) return false;
+    uint32_t ch = m.channels, rate = m.sampleRate;
+    if (!ch || rate < 1000 || rate > 384000) { drmp3_uninit(&m); return false; }
+    /* read only what a pad keeps (plus one frame to know it was cut), never a whole song */
+    uint64_t want = (uint64_t)((double)MAX_FRAMES * rate / OUT_RATE) + 2;
+    std::vector<float> raw((size_t)want * ch);
+    uint64_t got = drmp3_read_pcm_frames_f32(&m, want, &raw[0]);
+    drmp3_uninit(&m);
+    if (!got) return false;
+    out.src_frames = (uint32_t)got;
+    double sumsq = 0;
+    for (uint64_t i = 0; i < got * ch; i++) sumsq += (double)raw[i] * raw[i];
+    out.rms = (float)sqrt(sumsq / (double)(got * ch));
+    uint64_t outn = (uint64_t)((double)got * OUT_RATE / rate);
+    if (outn < 1) outn = 1;
+    if (outn > MAX_FRAMES) { outn = MAX_FRAMES; out.truncated = true; }
+    out.lr.assign((size_t)outn * 2, 0);
+    double step = (double)rate / OUT_RATE;
+    for (uint64_t k = 0; k < outn; k++) {
+        double pos = k * step;
+        uint64_t i0 = (uint64_t)pos, i1 = i0 + 1 < got ? i0 + 1 : i0;
+        float fr = (float)(pos - (double)i0);
+        for (int c = 0; c < 2; c++) {
+            uint32_t src = ch == 1 ? 0 : (uint32_t)c;
+            float a = raw[(size_t)(i0 * ch + src)], bb = raw[(size_t)(i1 * ch + src)];
+            float x = (a + (bb - a) * fr) * 32767.0f;
+            out.lr[(size_t)k * 2 + c] = (int16_t)(x > 32767.0f ? 32767 : x < -32768.0f ? -32768 : lrintf(x));
+        }
+    }
+    return true;
+}
+
 inline bool decode(const std::string &path, Pcm &out) {
+    if (is_mp3(path)) return decode_mp3(path, out);
     std::vector<uint8_t> b;
     Fmt f;
     if (!read_file(path, b) || !parse_any(b, f) || f.frames == 0 || f.rate < 1000 || f.rate > 384000) return false;

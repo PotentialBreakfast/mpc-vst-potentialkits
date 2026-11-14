@@ -225,7 +225,7 @@ inline bool has_audio_ext(const std::string &lname) {
     size_t d = lname.find_last_of('.');
     if (d == std::string::npos) return false;
     std::string e = lname.substr(d);
-    return e == ".wav" || e == ".aif" || e == ".aiff";
+    return e == ".wav" || e == ".aif" || e == ".aiff" || e == ".mp3";
 }
 
 /* Depth-first walk of every root. Hidden entries and symlinks are skipped (no loops, no escaping the root),
