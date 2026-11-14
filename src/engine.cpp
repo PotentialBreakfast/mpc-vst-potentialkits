@@ -1,4 +1,7 @@
-/* Lucky Dip: the plugin engine (wrapper/engine.h). A 16-pad random drum-kit builder that plays its kit.
+/* PotentialKits: the plugin engine (wrapper/engine.h). A 16-pad random drum-kit builder that plays its kit.
+ * A fork of sd88me's Lucky Dip (MIT): the library scan, classifier, random assignment, loudness matching and MPC program
+ * export are Lucky Dip's. PotentialKits adds KIT STYLES, ROLL (MILD / MEDIUM / WILD), per-pad PITCH, DECAY and CHOKE (in
+ * playback and in the exported kit), USER kit slots, the pad tiles, and the PotentialSuite looks and MANUAL page.
  *
  * Threads and what they may touch:
  *   audio (render, usually midi)  only the lock-free pad buffers, pending triggers and the voices.
@@ -16,6 +19,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -30,13 +34,104 @@ extern "C" {
 #include "ld_audio.h"
 #include "ld_core.h"
 #include "ld_xpm.h"
+#include <math.h>
+#include "../shared/looks/potential_theme.h"   /* the LOOK switch (parameter "theme") */
+#include "../shared/potential_manual.h"        /* the MANUAL tab's page */
 
 using namespace ld;
 
 namespace {
 
 const int RETIRE_SECS = 20;
-const char *const STATE_MAGIC = "LD1";
+const char *const STATE_MAGIC = "LD1";   /* Lucky Dip's state format, extended with "px" and "wild=" lines */
+const int QUIET_MS = 3000, TWICE_MS = 400;   /* a project load replays tile and slot values: ignore taps for a moment */
+const int NSTYLES = 9, NUSER = 8;
+
+long long now_ms() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+
+/* KIT STYLES: what each pad draws from, its pitch, decay and choke group. Pads are the MPC's A01..A16 (A01 bottom left). */
+struct StylePad { uint32_t pool; int pitch, decay, choke; };
+#define B(c) (1u << (c))
+const char *const STYLE_NAME[NSTYLES] = {"CLASSIC", "BOOM BAP", "LO-FI", "TRAP", "HOUSE", "DUSTY JAZZ", "PERCUSSION", "ELECTRO", "WEIRD"};
+const StylePad STYLES[NSTYLES][NPADS] = {
+    {   /* CLASSIC: Lucky Dip's own layout (pool 0 = the pad's default), hats choke */
+        {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 1}, {0, 0, 100, 1}, {0, 0, 100, 0},
+        {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}, {0, 0, 100, 0}},
+    {   /* BOOM BAP */
+        {B(C_KICK), 0, 100, 0}, {B(C_SNARE), 0, 100, 0}, {B(C_RIM) | B(C_SNARE), 0, 100, 0}, {B(C_CLAP) | B(C_SNARE), 0, 100, 0},
+        {B(C_CLOSED_HAT) | B(C_HAT), 0, 100, 1}, {B(C_OPEN_HAT) | B(C_HAT), 0, 70, 1}, {B(C_PERC) | B(C_CONGA), 0, 100, 0}, {B(C_TOM), 0, 100, 0},
+        {B(C_KICK), -2, 100, 0}, {B(C_SNARE), -2, 100, 0}, {B(C_RIDE) | B(C_CYMBAL), 0, 100, 0}, {B(C_CRASH) | B(C_CYMBAL), 0, 80, 0},
+        {B(C_STAB) | B(C_CHORD), 0, 100, 0}, {B(C_VOX), 0, 100, 0}, {B(C_BASS), 0, 100, 0}, {B(C_FX), 0, 100, 0}},
+    {   /* LO-FI: everything a little lower and shorter */
+        {B(C_KICK), -3, 85, 0}, {B(C_SNARE), -3, 75, 0}, {B(C_RIM), -2, 70, 0}, {B(C_CLAP) | B(C_SNARE), -3, 75, 0},
+        {B(C_CLOSED_HAT) | B(C_HAT), -2, 55, 1}, {B(C_OPEN_HAT) | B(C_HAT), -2, 60, 1}, {B(C_PERC), -3, 70, 0}, {B(C_CONGA) | B(C_TOM), -3, 80, 0},
+        {B(C_KICK), -5, 80, 0}, {B(C_SNARE), -5, 70, 0}, {B(C_CYMBAL) | B(C_RIDE), -4, 70, 0}, {B(C_GLITCH), -2, 80, 0},
+        {B(C_CHORD) | B(C_PAD), -3, 100, 0}, {B(C_VOX), -3, 100, 0}, {B(C_FX) | B(C_OTHER), -2, 100, 0}, {B(C_BASS), -3, 90, 0}},
+    {   /* TRAP: an 808 (bass) beside the kick, three hats that choke each other */
+        {B(C_KICK), 0, 100, 0}, {B(C_BASS), 0, 100, 2}, {B(C_SNARE), 0, 100, 0}, {B(C_CLAP), 0, 100, 0},
+        {B(C_CLOSED_HAT), 0, 60, 1}, {B(C_CLOSED_HAT), 2, 50, 1}, {B(C_OPEN_HAT), 0, 80, 1}, {B(C_HAT), 0, 70, 0},
+        {B(C_PERC), 0, 100, 0}, {B(C_RIM), 0, 100, 0}, {B(C_BASS), -5, 100, 2}, {B(C_CRASH), 0, 100, 0},
+        {B(C_VOX), 0, 100, 0}, {B(C_FX), 0, 100, 0}, {B(C_SYNTH) | B(C_LEAD), 0, 100, 0}, {B(C_GLITCH), 0, 100, 0}},
+    {   /* HOUSE */
+        {B(C_KICK), 0, 100, 0}, {B(C_CLAP), 0, 100, 0}, {B(C_SNARE), 0, 100, 0}, {B(C_RIM), 0, 100, 0},
+        {B(C_CLOSED_HAT), 0, 100, 1}, {B(C_OPEN_HAT), 0, 100, 1}, {B(C_RIDE), 0, 100, 0}, {B(C_PERC), 0, 100, 0},
+        {B(C_CONGA), 0, 100, 0}, {B(C_TOM), 0, 100, 0}, {B(C_CRASH) | B(C_CYMBAL), 0, 100, 0}, {B(C_CLAP), 1, 100, 0},
+        {B(C_STAB), 0, 100, 0}, {B(C_CHORD), 0, 100, 0}, {B(C_BASS), 0, 100, 0}, {B(C_VOX), 0, 100, 0}},
+    {   /* DUSTY JAZZ: brushes and rides, low toms, a chord and a bass note */
+        {B(C_KICK), 0, 100, 0}, {B(C_SNARE), 0, 100, 0}, {B(C_RIM), 0, 100, 0}, {B(C_SNARE), -1, 90, 0},
+        {B(C_CLOSED_HAT) | B(C_HAT), 0, 100, 1}, {B(C_OPEN_HAT), 0, 100, 1}, {B(C_RIDE), 0, 100, 0}, {B(C_CYMBAL), 0, 100, 0},
+        {B(C_TOM), 0, 100, 0}, {B(C_TOM), -3, 100, 0}, {B(C_CRASH), 0, 100, 0}, {B(C_PERC), 0, 100, 0},
+        {B(C_CHORD), 0, 100, 0}, {B(C_BASS), 0, 100, 0}, {B(C_VOX), 0, 100, 0}, {B(C_PAD), 0, 100, 0}},
+    {   /* PERCUSSION: congas, toms and hits tuned across the pads */
+        {B(C_CONGA), 0, 100, 0}, {B(C_CONGA), 2, 100, 0}, {B(C_PERC), 0, 100, 0}, {B(C_PERC), 3, 100, 0},
+        {B(C_TOM), 0, 100, 0}, {B(C_TOM), -3, 100, 0}, {B(C_RIM), 0, 100, 0}, {B(C_CLAP), 0, 100, 0},
+        {B(C_PERC) | B(C_CONGA) | B(C_TOM), 5, 90, 0}, {B(C_PERC), -5, 100, 0}, {B(C_HAT), 0, 100, 0}, {B(C_CYMBAL), 0, 100, 0},
+        {B(C_KICK), 0, 100, 0}, {B(C_SNARE), 0, 100, 0}, {B(C_VOX), 0, 100, 0}, {B(C_FX), 0, 100, 0}},
+    {   /* ELECTRO: drums below, synth parts above */
+        {B(C_KICK), 0, 100, 0}, {B(C_SNARE) | B(C_CLAP), 0, 100, 0}, {B(C_CLAP), 0, 100, 0}, {B(C_GLITCH), 0, 100, 0},
+        {B(C_CLOSED_HAT), 0, 100, 1}, {B(C_OPEN_HAT), 0, 100, 1}, {B(C_PERC), 0, 100, 0}, {B(C_TOM), 0, 100, 0},
+        {B(C_SYNTH), 0, 100, 0}, {B(C_STAB), 0, 100, 0}, {B(C_BASS), 0, 100, 0}, {B(C_LEAD), 0, 100, 0},
+        {B(C_FX), 0, 100, 0}, {B(C_GLITCH), 0, 100, 0}, {B(C_VOX), 0, 100, 0}, {B(C_PAD), 0, 100, 0}},
+    {   /* WEIRD: odd mixes, pitched far */
+        {B(C_KICK) | B(C_GLITCH), -5, 100, 0}, {B(C_SNARE) | B(C_FX), 3, 80, 0}, {B(C_VOX), 7, 100, 0}, {B(C_GLITCH), 0, 60, 0},
+        {B(C_HAT) | B(C_GLITCH), 5, 50, 1}, {B(C_CYMBAL), -7, 40, 1}, {B(C_PERC) | B(C_FX), 5, 100, 0}, {B(C_TOM) | B(C_BASS), -12, 100, 0},
+        {B(C_SYNTH) | B(C_LEAD), 12, 70, 0}, {B(C_VOX) | B(C_OTHER), -5, 100, 0}, {B(C_FX), -12, 100, 0}, {B(C_CHORD) | B(C_PAD), -7, 100, 0},
+        {B(C_OTHER), 0, 100, 0}, {B(C_GLITCH) | B(C_FX), 7, 100, 0}, {B(C_STAB) | B(C_PERC), -3, 100, 0}, {B(C_CLAP) | B(C_VOX), 2, 100, 0}},
+};
+#undef B
+
+/* the keys the engine changes by itself, told to the host by mpc_engine_changed() so the screen follows */
+const char *const DIRTY_KEY[] = {"sel_pad", "sel_gain", "sel_pitch", "sel_decay", "sel_choke", "user_save", "wild",
+                                 "pad1_gain", "pad2_gain", "pad3_gain", "pad4_gain", "pad5_gain", "pad6_gain", "pad7_gain", "pad8_gain",
+                                 "pad9_gain", "pad10_gain", "pad11_gain", "pad12_gain", "pad13_gain", "pad14_gain", "pad15_gain", "pad16_gain"};
+enum { D_SEL = 0x1f, D_SAVE = 1 << 5, D_WILD = 1 << 6, D_GAINS = 0xffffu << 7 };
+
+/* a pad's decay as a per-sample multiplier: 100 = none, 0..99 = 5 ms .. about 2 s to -40 dB */
+float decay_k(int decay) {
+    if (decay >= 100) return 1.0f;
+    double tau = 0.005 * pow(400.0, std::max(0, decay) / 100.0) / 4.6;   /* the time to -40 dB, as an e-fold time */
+    return (float)exp(-1.0 / (tau * 44100.0));
+}
+/* a pad as you hear it (pitch, decay, gain): 44.1 kHz 16-bit stereo, for the exported kit */
+void render_pad(const Pcm &in, const Pad &p, std::vector<int16_t> &out) {
+    double rate = pow(2.0, p.pitch / 12.0), pos = 0;
+    float env = 1, k = decay_k(p.decay);
+    uint32_t total = in.frames();
+    out.clear();
+    if (total < 2) return;
+    out.reserve((size_t)(total / rate + 2) * 2);
+    while (pos < total - 1 && env > 1e-4f) {
+        uint32_t i0 = (uint32_t)pos;
+        float f = (float)(pos - i0);
+        for (int c = 0; c < 2; c++) {
+            float a = in.lr[i0 * 2 + c], b = in.lr[(i0 + 1) * 2 + c];
+            float v = (a + (b - a) * f) * env * p.gain;
+            out.push_back((int16_t)(v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : v));
+        }
+        pos += rate; env *= k;
+    }
+}
+
 
 /* ---- the sample library, shared by every instance in the process ---- */
 struct Shared {
@@ -109,12 +204,12 @@ std::vector<std::string> user_drives() {
     return out;
 }
 
-/* <data_dir>/luckydip.conf: root=<dir> (repeatable), export_dir=<dir>, skip_loops=0|1, max_mb=<n>,
+/* <data_dir>/potentialkits.conf: root=<dir> (repeatable), export_dir=<dir>, skip_loops=0|1, max_mb=<n>,
  * classify_filenames=0|1. Without any root=, the usual card layout is searched (/media/<card>/Expansions etc.). */
 Config load_config(const std::string &data_dir) {
     Config c;
     c.scan.skip_loops = true;
-    FILE *f = fopen((data_dir + "/luckydip.conf").c_str(), "r");
+    FILE *f = fopen((data_dir + "/potentialkits.conf").c_str(), "r");
     if (f) {
         char line[1024];
         while (fgets(line, sizeof line, f)) {
@@ -141,7 +236,11 @@ Config load_config(const std::string &data_dir) {
     if (c.export_dir.empty()) {
         std::string force = "/media/az01-internal-sd/Expansions/Kits & Patterns";   /* where a Force browses kits */
         std::string live3 = "/nvme/MPC Documents";                                   /* the Live III's own documents folder */
-        c.export_dir = is_dir(force) ? force : is_dir(live3) ? live3 + "/Lucky Dip" : data_dir + "/kits";
+        /* else beside the plugin's own folder, at the top of its drive: <drive>/PotentialKits/Kits (data_dir is
+         * <drive>/VST2 Plugins/<plugin folder>/data), so an update of the plugin never touches saved kits */
+        std::string drive = data_dir;
+        for (int up = 0; up < 3; up++) { size_t sl = drive.find_last_of('/'); drive = sl == std::string::npos || sl == 0 ? std::string() : drive.substr(0, sl); }
+        c.export_dir = is_dir(force) ? force : is_dir(live3) ? live3 + "/PotentialKits" : !drive.empty() ? drive + "/PotentialKits/Kits" : data_dir + "/kits";
     }
     return c;
 }
@@ -244,7 +343,7 @@ struct FolderSel {
                 return;
             }
         }
-        locs.push_back(p); subs.push_back(std::vector<std::string>(1, std::string()));   /* a path from luckydip.conf, not found on the cards */
+        locs.push_back(p); subs.push_back(std::vector<std::string>(1, std::string()));   /* a path from potentialkits.conf, not found on the cards */
         loc = (int)locs.size() - 1;
     }
     void step_loc(int d) { int n = (int)locs.size(); loc = ((loc + d) % n + n) % n; sub = 0; }
@@ -254,12 +353,24 @@ struct FolderSel {
     }
 };
 
-struct Job { enum Type { LOAD, EXPORT } type; int pad; std::string path; Pad pads[NPADS]; std::string dir, name; bool link = false; };
+struct Job { enum Type { LOAD, EXPORT } type; int pad; std::string path; Pad pads[NPADS]; std::string dir, name; bool link = false;
+             const Pcm *pcm[NPADS] = {0}; };   /* EXPORT: the decoded pads, to write the changed ones as heard */
 
 struct Retired { Pcm *p; std::chrono::steady_clock::time_point at; };
 
 struct Inst {
-    std::string data_dir;
+    std::string data_dir;            /* <plugin folder>/data: the sample index, favourites, potentialkits.conf */
+    std::string plugin_dir;          /* the plugin's folder (the looks' skins) */
+    pt_theme_t theme;                /* which look MPC loads next time: not part of the saved state */
+    pm_manual_t manual;              /* the MANUAL tab's page */
+    std::atomic<uint32_t> dirty{0};  /* DIRTY_KEY bits to tell the host */
+    int reported_sel = -1;           /* the selection last told to the host (audio thread only) */
+    std::atomic<int> wild{1};        /* ROLL: 0 MILD, 1 MEDIUM, 2 WILD */
+    long long quiet_until = 0, tile_ms[NPADS], user_ms[NUSER];
+    std::string user_dir;            /* <drive>/PotentialSuite Presets/PotentialKits: the USER kits */
+    std::atomic<bool> user_armed{false};
+    std::atomic<int> user_lit{-1};
+    std::atomic<bool> user_has[NUSER];
     Config cfg;
     std::string sig, cache_path;
     std::vector<std::string> def_roots;                 /* the conf / card-layout defaults (source "Default") */
@@ -283,7 +394,7 @@ struct Inst {
 
     std::atomic<Pcm *> buf[NPADS];
     std::atomic<int> pending[NPADS]; /* note-on velocity waiting for the audio thread */
-    struct Voice { const Pcm *p; uint32_t pos; float amp; } voice[NPADS];
+    struct Voice { const Pcm *p; double pos, rate; float amp, env, k, cut; } voice[NPADS];   /* cut < 1: choked, fading out */
 
     std::mutex jmu, gmu;             /* job queue; graveyard */
     std::condition_variable jcv;
@@ -294,7 +405,13 @@ struct Inst {
 
     Inst() : stop(false) {
         memset(loaded, 0, sizeof loaded);
-        for (int i = 0; i < NPADS; i++) { pool_bits[i] = 0; rms[i] = 0; buf[i] = 0; pending[i] = 0; voice[i].p = 0; voice[i].pos = 0; voice[i].amp = 0; }
+        memset(&theme, 0, sizeof theme); memset(&manual, 0, sizeof manual);
+        for (int i = 0; i < NPADS; i++) {
+            pool_bits[i] = 0; rms[i] = 0; buf[i] = 0; pending[i] = 0; tile_ms[i] = 0;
+            voice[i].p = 0; voice[i].pos = 0; voice[i].rate = 1; voice[i].amp = 0; voice[i].env = 1; voice[i].k = 1; voice[i].cut = 1;
+        }
+        for (int i = 0; i < NUSER; i++) { user_has[i] = false; user_ms[i] = 0; }
+        pads[5].choke = pads[6].choke = 1;   /* the closed and open hat pads choke each other */
     }
 
     void set_status(const std::string &s) { std::lock_guard<std::mutex> l(mu); status = s.substr(0, 23); }
@@ -371,12 +488,22 @@ struct Inst {
         loaded[j.pad] = 1;
     }
     void do_export(const Job &j) {
-        ExportResult r = export_xpm(j.dir, j.name, j.pads, j.link);
+        /* a pad with PITCH, DECAY or GAIN changed is written as you hear it (copy mode); linked kits keep the originals,
+         * with PITCH as the program's tune. CHOKE becomes the program's mute group either way. */
+        std::vector<int16_t> heard[NPADS];
+        const std::vector<int16_t> *rendered[NPADS] = {0};
+        for (int i = 0; i < NPADS && !j.link; i++) {
+            const Pad &p = j.pads[i];
+            if (!p.has || !j.pcm[i] || (p.pitch == 0 && p.decay >= 100 && fabsf(p.gain - 1.0f) < 0.005f)) continue;
+            render_pad(*j.pcm[i], p, heard[i]);
+            if (!heard[i].empty()) rendered[i] = &heard[i];
+        }
+        ExportResult r = export_xpm(j.dir, j.name, j.pads, j.link, rendered);
         std::lock_guard<std::mutex> l(mu);
         if (r.ok) { export_name = j.name; status = r.warnings.empty() ? "Exported OK" : "Exported (see log)"; }
         else status = "Export failed";
-        if (!r.ok) fprintf(stderr, "luckydip: export failed: %s\n", r.error.c_str());
-        for (size_t i = 0; i < r.warnings.size(); i++) fprintf(stderr, "luckydip: export: %s\n", r.warnings[i].c_str());
+        if (!r.ok) fprintf(stderr, "potentialkits: export failed: %s\n", r.error.c_str());
+        for (size_t i = 0; i < r.warnings.size(); i++) fprintf(stderr, "potentialkits: export: %s\n", r.warnings[i].c_str());
     }
 
     /* ---- settings: folder choices ---- */
@@ -614,6 +741,7 @@ struct Inst {
         status = "Unlocked all";
     }
     void normalise() {
+        dirty |= D_GAINS;
         std::lock_guard<std::mutex> l(mu);
         float g[NPADS], r[NPADS];
         for (int i = 0; i < NPADS; i++) r[i] = pads[i].has && loaded[i] == 1 ? rms[i] : 0.0f;
@@ -625,12 +753,12 @@ struct Inst {
         std::lock_guard<std::mutex> l(mu);
         Job j; j.type = Job::EXPORT; j.pad = 0;
         int n = 0;
-        for (int i = 0; i < NPADS; i++) { j.pads[i] = pads[i]; n += pads[i].has; }
+        for (int i = 0; i < NPADS; i++) { j.pads[i] = pads[i]; n += pads[i].has; j.pcm[i] = loaded[i] == 1 ? buf[i].load() : 0; }
         if (!n) { status = "Nothing to export"; return; }
         time_t t = time(0); struct tm tmv;
         localtime_r(&t, &tmv);
         char nm[48];
-        strftime(nm, sizeof nm, "LuckyDip-%m%d-%H%M%S", &tmv);
+        strftime(nm, sizeof nm, "PotentialKits-%m%d-%H%M%S", &tmv);
         j.name = nm; j.dir = cfg.export_dir; j.link = link_samples;
         push(j);
         status = "Exporting...";
@@ -653,12 +781,131 @@ struct Inst {
         if (follow.load()) sel = pad;       /* lock-free: this runs on the audio thread */
     }
 
+    /* ---- PotentialKits: styles, ROLL, the selected pad's sound, USER kits ---- */
+    void mark_pads_dirty() { dirty |= D_SEL | D_GAINS; }
+    void apply_style(int st) {
+        if (st < 0 || st >= NSTYLES) return;
+        {
+            std::lock_guard<std::mutex> l(mu);
+            for (int i = 0; i < NPADS; i++) {
+                if (pads[i].locked) continue;
+                const StylePad &sp = STYLES[st][i];
+                pads[i].pool = sp.pool; pads[i].pitch = sp.pitch; pads[i].decay = sp.decay; pads[i].choke = sp.choke;
+            }
+            sync_mirrors_locked();
+        }
+        generate();
+        set_status(std::string(STYLE_NAME[st]) + " kit");
+        mark_pads_dirty();
+    }
+    void roll() {
+        Shared &sh = shared();
+        uint32_t seed = new_seed();
+        Rng rng(seed);
+        int w = wild.load();
+        std::string msg;
+        {
+            std::lock_guard<std::mutex> l(sh.mu);
+            std::lock_guard<std::mutex> l2(mu);
+            if (sh.lib->recs.empty()) { status = sh.scanning ? "Scanning..." : "No samples found"; return; }
+            std::string before[NPADS];
+            for (int i = 0; i < NPADS; i++) before[i] = pads[i].has ? pads[i].sample.path : "";
+            if (w == 0) {          /* MILD: up to four unlocked pads get a new sample from their own pools */
+                std::vector<int> open;
+                for (int i = 0; i < NPADS; i++) if (!pads[i].locked) open.push_back(i);
+                for (int n = 0; n < 4 && !open.empty(); n++) {
+                    size_t k = (size_t)(rng.next() * open.size());
+                    reroll_pad(pads, open[k], *sh.lib, new_seed(), prevent_dup);
+                    open.erase(open.begin() + k);
+                }
+                msg = "Rolled: a few pads";
+            } else {
+                if (w == 2) {      /* WILD: another style's pools, the top row from any two sounds */
+                    int st = 1 + (int)(rng.next() * (NSTYLES - 1));
+                    for (int i = 0; i < NPADS; i++) if (!pads[i].locked) { pads[i].pool = STYLES[st][i].pool; pads[i].choke = STYLES[st][i].choke; }
+                    for (int i = 12; i < NPADS; i++)
+                        if (!pads[i].locked) pads[i].pool = (1u << (int)(rng.next() * NCAT)) | (1u << (int)(rng.next() * NCAT));
+                }
+                int span = w == 2 ? 7 : 2;
+                for (int i = 0; i < NPADS; i++) {
+                    if (pads[i].locked) continue;
+                    pads[i].pitch = rng.next() < (w == 2 ? 0.5 : 0.33) ? (int)floor(rng.next() * (2 * span + 1)) - span : 0;
+                    pads[i].decay = rng.next() < (w == 2 ? 0.5 : 0.25) ? 40 + (int)(rng.next() * 60) : 100;
+                }
+                assign_kit(pads, *sh.lib, seed, prevent_dup);
+                sync_mirrors_locked();
+                msg = w == 2 ? "Rolled: WILD" : "Rolled: new kit";
+            }
+            for (int i = 0; i < NPADS; i++)
+                if (pads[i].has && pads[i].sample.path != before[i]) drop_pad_locked(i);
+            queue_loads_locked();
+            status = msg;
+        }
+        mark_pads_dirty();
+    }
+    bool tap_ok(long long *last) {           /* a tile or slot tap: not during a project load, not twice in one touch */
+        long long t = now_ms();
+        if (t < quiet_until || t - *last < TWICE_MS) return false;
+        *last = t;
+        return true;
+    }
+    void tile_tap(int i) {
+        if (!tap_ok(&tile_ms[i])) return;
+        sel = i;
+        trigger(i, 100);
+        dirty |= D_SEL;
+    }
+    /* USER kits: the kit (pads, locks, pools, gains, pitch, decay, choke), not the folders or library settings */
+    std::string user_path(int n) const { return user_dir.empty() ? std::string() : user_dir + "/kit" + std::to_string(n + 1) + ".txt"; }
+    void refresh_user() {
+        for (int n = 0; n < NUSER; n++) { struct stat st; user_has[n] = !user_dir.empty() && stat(user_path(n).c_str(), &st) == 0 && st.st_size > 0; }
+    }
+    std::map<int, std::string> user_mem;    /* without a folder (a computer test): the kits live in memory */
+    void user_tap(int n) {
+        if (!tap_ok(&user_ms[n])) return;
+        refresh_user();
+        if (user_armed.exchange(false)) {
+            dirty |= D_SAVE;
+            std::string kit = get_state(true);
+            bool ok;
+            if (user_dir.empty()) { user_mem[n] = kit; ok = true; }
+            else {
+                make_dirs(user_dir);
+                std::string pth = user_path(n), tmp = pth + ".tmp";
+                ok = write_text(tmp, kit) && rename(tmp.c_str(), pth.c_str()) == 0;
+                if (!ok) remove(tmp.c_str());
+            }
+            user_has[n] = ok || user_has[n].load();
+            if (ok) user_lit = n;
+            set_status(ok ? "Saved to USER " + std::to_string(n + 1) : "Could not save the kit");
+            return;
+        }
+        std::string kit;
+        if (user_dir.empty()) { std::map<int, std::string>::iterator it = user_mem.find(n); if (it != user_mem.end()) kit = it->second; }
+        else {
+            FILE *f = fopen(user_path(n).c_str(), "rb");
+            if (f) { char b[4096]; size_t r; while ((r = fread(b, 1, sizeof b, f)) > 0) kit.append(b, r); fclose(f); }
+        }
+        if (kit.empty()) { set_status("USER " + std::to_string(n + 1) + " is empty"); return; }
+        { std::lock_guard<std::mutex> l(mu); set_state_locked(kit.c_str()); }
+        user_lit = n;
+        set_status("Loaded USER " + std::to_string(n + 1));
+        mark_pads_dirty();
+    }
+
     /* ---- state ---- */
-    std::string get_state() {
+    std::string get_state(bool kit_only = false) {
         std::lock_guard<std::mutex> l(mu);
-        std::string s = std::string(STATE_MAGIC) + "\nsel=" + std::to_string(sel.load()) + "\nfollow=" + (follow ? "1" : "0") + "\ndup=" + (prevent_dup ? "1" : "0") + "\n" +
-                        "src=" + src.path() + "\nexp=" + exp.path() + "\nlink=" + (link_samples ? "1" : "0") +
-                        "\nloops=" + (cfg.scan.skip_loops ? "1" : "0") + "\nsize=" + std::to_string(size_idx) + "\n";
+        std::string s = std::string(STATE_MAGIC) + "\n";
+        if (!kit_only)
+            s += "sel=" + std::to_string(sel.load()) + "\nfollow=" + (follow ? "1" : "0") + "\ndup=" + (prevent_dup ? "1" : "0") + "\n" +
+                 "src=" + src.path() + "\nexp=" + exp.path() + "\nlink=" + (link_samples ? "1" : "0") +
+                 "\nloops=" + (cfg.scan.skip_loops ? "1" : "0") + "\nsize=" + std::to_string(size_idx) + "\nwild=" + std::to_string(wild.load()) + "\n";
+        for (int i = 0; i < NPADS; i++) {   /* pitch, decay and choke first: short, and never dropped for a long path */
+            char px[64];
+            snprintf(px, sizeof px, "px\t%d\t%d\t%d\t%d\n", i, pads[i].pitch, pads[i].decay, pads[i].choke);
+            s += px;
+        }
         for (int i = 0; i < NPADS; i++) {
             const Pad &p = pads[i];
             char head[96];
@@ -670,6 +917,7 @@ struct Inst {
         return s;
     }
     void set_state(const char *text) {
+        quiet_until = now_ms() + QUIET_MS;   /* a project: the tile and slot values it replays are not taps */
         std::string want;
         {
             std::lock_guard<std::mutex> l(mu);
@@ -699,6 +947,15 @@ struct Inst {
             else if (line.compare(0, 4, "exp=") == 0) { exp.set_path(line.substr(4)); folders_changed = true; }
             else if (line.compare(0, 5, "link=") == 0) link_samples = atoi(line.c_str() + 5) != 0;
             else if (line.compare(0, 6, "loops=") == 0) { cfg.scan.skip_loops = atoi(line.c_str() + 6) != 0; folders_changed = true; }
+            else if (line.compare(0, 5, "wild=") == 0) wild = std::max(0, std::min(2, atoi(line.c_str() + 5)));
+            else if (line.compare(0, 3, "px\t") == 0) {   /* px \t idx \t pitch \t decay \t choke */
+                int i, pi, de, ch;
+                if (sscanf(line.c_str() + 3, "%d\t%d\t%d\t%d", &i, &pi, &de, &ch) == 4 && i >= 0 && i < NPADS) {
+                    pads[i].pitch = std::max(-12, std::min(12, pi));
+                    pads[i].decay = std::max(0, std::min(100, de));
+                    pads[i].choke = std::max(0, std::min(4, ch));
+                }
+            }
             else if (line.compare(0, 5, "size=") == 0) { size_idx = std::max(0, std::min(NSIZES - 1, atoi(line.c_str() + 5))); folders_changed = true; }
             else if (line.compare(0, 4, "pad\t") == 0) {
                 /* pad \t idx \t locked \t pool \t cat \t gain \t path */
@@ -745,8 +1002,17 @@ bool split_key(Inst *in, const char *key, int *pad, const char **field) {
 
 void *e_create(const char *data_dir) {
     Inst *in = new Inst;
-    in->data_dir = data_dir && *data_dir ? data_dir : "/tmp/luckydip";
+    in->quiet_until = now_ms() + QUIET_MS;
+    in->plugin_dir = data_dir && *data_dir ? data_dir : "";
+    in->data_dir = in->plugin_dir.empty() ? "/tmp/potentialkits" : in->plugin_dir + "/data";
     make_dirs(in->data_dir);
+    pt_theme_init(&in->theme, in->plugin_dir.empty() ? 0 : in->plugin_dir.c_str());
+    if (!in->plugin_dir.empty()) {   /* <drive>/PotentialSuite Presets/PotentialKits, beside VST2 Plugins: updates keep it */
+        std::string d = in->plugin_dir;
+        for (int up = 0; up < 2 && !d.empty(); up++) { size_t sl = d.find_last_of('/'); d = sl == std::string::npos || sl == 0 ? std::string() : d.substr(0, sl); }
+        if (!d.empty()) in->user_dir = d + "/PotentialSuite Presets/PotentialKits";
+    }
+    in->refresh_user();
     in->cfg = load_config(in->data_dir);
     in->def_roots = in->cfg.scan.roots;
     in->def_export = in->cfg.export_dir;
@@ -790,7 +1056,15 @@ bool is_on(const char *v) { return atof(v) > 0.5; }
 
 void e_set_param(void *h, const char *key, const char *val) {
     Inst *in = (Inst *)h;
+    if (pt_theme_set(&in->theme, key, val)) return;
+    if (pm_set(&in->manual, key, val)) return;
     if (!strcmp(key, "state")) { in->set_state(val); return; }
+    if (!strncmp(key, "tile_", 5)) { int i = atoi(key + 5) - 1; if (i >= 0 && i < NPADS) in->tile_tap(i); return; }
+    if (!strncmp(key, "style_", 6)) { if (is_on(val)) in->apply_style(atoi(key + 6) - 1); return; }
+    if (!strcmp(key, "dice")) { if (is_on(val)) in->roll(); return; }
+    if (!strcmp(key, "wild")) { in->wild = std::max(0, std::min(2, (int)(atof(val) + 0.5))); return; }
+    if (!strcmp(key, "user_save")) { in->user_armed = is_on(val); return; }
+    if (!strncmp(key, "user_", 5)) { int n = atoi(key + 5) - 1; if (n >= 0 && n < NUSER) in->user_tap(n); return; }
     if (!strcmp(key, "generate")) { if (is_on(val)) in->generate(); return; }
     if (!strcmp(key, "clear_all")) { if (is_on(val)) in->clear_all(); return; }
     if (!strcmp(key, "unlock_all")) { if (is_on(val)) in->unlock_all(); return; }
@@ -825,6 +1099,9 @@ void e_set_param(void *h, const char *key, const char *val) {
     int pad; const char *f;
     if (!split_key(in, key, &pad, &f)) return;
     if (!strcmp(f, "gain")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].gain = (float)std::max(0.0, std::min(200.0, atof(val))) / 100.0f; }
+    else if (!strcmp(f, "pitch")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].pitch = (int)lround(std::max(-12.0, std::min(12.0, atof(val)))); }
+    else if (!strcmp(f, "decay")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].decay = (int)lround(std::max(0.0, std::min(100.0, atof(val)))); }
+    else if (!strcmp(f, "choke")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].choke = (int)lround(std::max(0.0, std::min(4.0, atof(val)))); }
     else if (!strcmp(f, "lock")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].locked = is_on(val); in->sync_mirrors_locked(); }
     else if (!strncmp(f, "cat_", 4)) {      /* sel_cat_<name>: one category in/out of the pad's pool */
         for (int k = 0; k < NCAT; k++) if (!strcmp(f + 4, CAT_NAME[k])) {
@@ -849,7 +1126,15 @@ int put(char *buf, int n, const std::string &s) { snprintf(buf, n, "%s", s.c_str
 int e_get_param(void *h, const char *key, char *buf, int n) {
     Inst *in = (Inst *)h;
     if (n <= 0) return 0;
+    { int m = pt_theme_get(&in->theme, key, buf, n); if (m) return m; }
+    { int m = pm_get(&in->manual, key, buf, n); if (m) return m; }
     size_t kl = strlen(key);
+    if (!strncmp(key, "tile_", 5) && kl > 8 && !strcmp(key + kl - 3, "_on")) return put(buf, n, atoi(key + 5) - 1 == in->sel.load() ? "1" : "0");
+    if (!strncmp(key, "user_", 5) && kl > 8 && !strcmp(key + kl - 3, "_on")) return put(buf, n, atoi(key + 5) - 1 == in->user_lit.load() ? "1" : "0");
+    if (!strcmp(key, "user_save")) return put(buf, n, in->user_armed.load() ? "1" : "0");
+    if (!strncmp(key, "user_", 5)) { int u = atoi(key + 5); if (u < 1 || u > NUSER) return 0; return put(buf, n, std::string(in->user_has[u - 1].load() ? "USER " : "EMPTY ") + std::to_string(u)); }
+    if (!strcmp(key, "wild")) return put(buf, n, std::to_string(in->wild.load()));
+    if (!strcmp(key, "dice") || !strncmp(key, "style_", 6)) return put(buf, n, "0");
     if (kl > 3 && !strcmp(key + kl - 3, "_on")) {     /* the wrapper polls these from the audio thread: lock-free, from the mirrors */
         std::string base(key, kl - 3);
         int pad; const char *f;
@@ -891,9 +1176,19 @@ int e_get_param(void *h, const char *key, char *buf, int n) {
     if (!strcmp(key, "prevent_dup")) return put(buf, n, in->prevent_dup ? "1" : "0");
     if (!strcmp(key, "sel_pad")) return put(buf, n, std::to_string(in->sel.load() + 1));
     if (!strcmp(key, "follow")) return put(buf, n, in->follow ? "1" : "0");
+    if (!strncmp(key, "tile_", 5)) {   /* a pad tile: its sample, "*" first when locked */
+        int i = atoi(key + 5) - 1;
+        if (i < 0 || i >= NPADS) return 0;
+        const Pad &t = in->pads[i];
+        std::string s = !t.has ? std::string("-") : (in->loaded[i] == 2 ? "! " : "") + short_name(t.sample.path, 16);
+        return put(buf, n, (t.locked ? "* " : "") + s);
+    }
     int pad; const char *f;
     if (!split_key(in, key, &pad, &f)) return 0;
     const Pad &p = in->pads[pad];
+    if (!strcmp(f, "pitch")) return put(buf, n, std::to_string(p.pitch));
+    if (!strcmp(f, "decay")) return put(buf, n, std::to_string(p.decay));
+    if (!strcmp(f, "choke")) return put(buf, n, std::to_string(p.choke));
     if (!strcmp(f, "name") || !strcmp(f, "name_full")) {
         if (!p.has) return put(buf, n, "(empty)");
         std::string s = short_name(p.sample.path, 23);
@@ -923,16 +1218,20 @@ int e_get_param(void *h, const char *key, char *buf, int n) {
 void e_render(void *h, int16_t *out, int frames) {
     Inst *in = (Inst *)h;
     if (!in->audio_known.load()) { in->audio_tid = pthread_self(); in->audio_known = true; }
+    static const float CUT_K = 0.985f;    /* a choked pad fades out in about 1.5 ms, so it doesn't click */
     for (int p = 0; p < NPADS; p++) {
         int v = in->pending[p].exchange(0);
         if (!v) continue;
         const Pcm *pcm = in->buf[p].load();
         if (!pcm) continue;
-        float g;
-        { /* the gain is a plain float written by the UI thread: a torn read is harmless, a lock here is not allowed */
-            g = in->pads[p].gain;
-        }
-        in->voice[p].p = pcm; in->voice[p].pos = 0; in->voice[p].amp = (v / 127.0f) * g;
+        /* the pad's settings are plain values written by the UI thread: a torn read is harmless, a lock here is not allowed */
+        const Pad &pd = in->pads[p];
+        Inst::Voice &vo = in->voice[p];
+        vo.p = pcm; vo.pos = 0; vo.amp = (v / 127.0f) * pd.gain;
+        vo.rate = pow(2.0, pd.pitch / 12.0); vo.env = 1; vo.k = decay_k(pd.decay); vo.cut = 1;
+        if (pd.choke > 0)   /* CHOKE: the other pads in this group stop */
+            for (int q = 0; q < NPADS; q++)
+                if (q != p && in->pads[q].choke == pd.choke && in->voice[q].p) in->voice[q].cut = CUT_K;
     }
     float mix[256 * 2];
     int n = frames > 256 ? 256 : frames;
@@ -943,11 +1242,22 @@ void e_render(void *h, int16_t *out, int frames) {
         uint32_t total = vo.p->frames();
         const int16_t *s = &vo.p->lr[0];
         int k = 0;
-        for (; k < n && vo.pos < total; k++, vo.pos++) {
-            mix[k * 2] += s[vo.pos * 2] * vo.amp;
-            mix[k * 2 + 1] += s[vo.pos * 2 + 1] * vo.amp;
+        if (vo.rate == 1.0 && vo.k == 1.0f && vo.cut == 1.0f) {   /* the plain case: Lucky Dip's own loop */
+            uint32_t pos = (uint32_t)vo.pos;
+            for (; k < n && pos < total; k++, pos++) { mix[k * 2] += s[pos * 2] * vo.amp; mix[k * 2 + 1] += s[pos * 2 + 1] * vo.amp; }
+            vo.pos = pos;
+            if (pos >= total) vo.p = 0;
+            continue;
         }
-        if (vo.pos >= total) vo.p = 0;
+        for (; k < n; k++) {
+            if (vo.pos >= total - 1 || vo.env < 1e-4f) { vo.p = 0; break; }
+            uint32_t i0 = (uint32_t)vo.pos;
+            float f = (float)(vo.pos - i0), g = vo.amp * vo.env;
+            mix[k * 2] += (s[i0 * 2] + (s[i0 * 2 + 2] - s[i0 * 2]) * f) * g;
+            mix[k * 2 + 1] += (s[i0 * 2 + 1] + (s[i0 * 2 + 3] - s[i0 * 2 + 1]) * f) * g;
+            vo.pos += vo.rate;
+            vo.env *= vo.k * vo.cut;
+        }
     }
     for (int i = 0; i < n * 2; i++) {
         float x = mix[i];
@@ -961,3 +1271,17 @@ const mpc_engine_t ENGINE = {e_create, e_destroy, e_midi, e_set_param, e_get_par
 }  // namespace
 
 extern "C" const mpc_engine_t *mpc_engine(void) { return &ENGINE; }
+
+/* Values the engine changed by itself (the selection following the pad played, a style, ROLL, a USER kit, MATCH LEVELS,
+ * SAVE going out after a save): one key per call, so MPC's controls follow. Runs on the audio thread: atomics only. */
+extern "C" int mpc_engine_changed(void *h, char *key, int len) {
+    Inst *in = (Inst *)h;
+    int s = in->sel.load();
+    if (s != in->reported_sel) { in->reported_sel = s; in->dirty |= D_SEL; }
+    uint32_t d = in->dirty.load();
+    if (!d) return 0;
+    int i = __builtin_ctz(d);
+    in->dirty &= ~(1u << i);
+    snprintf(key, len, "%s", DIRTY_KEY[i]);
+    return 1;
+}

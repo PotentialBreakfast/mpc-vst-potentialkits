@@ -262,7 +262,7 @@ inline void scan_library(const ScanOpts &o, const Classifier &cl, std::vector<Re
                 struct stat s;
                 if (lstat(full.c_str(), &s) != 0 || S_ISLNK(s.st_mode)) continue;
                 if (S_ISDIR(s.st_mode)) {
-                    if (names[i].compare(0, 9, "LuckyDip-") == 0) continue;   /* our own exported kits are not source material */
+                    if (names[i].compare(0, 9, "LuckyDip-") == 0 || names[i].compare(0, 14, "PotentialKits-") == 0) continue;   /* exported kits (Lucky Dip's and ours) are not source material */
                     if (o.skip_loops && looks_like_loop_dir(names[i])) { st.loops++; continue; }
                     if ((int)it.rel.size() <= o.max_depth) {
                         Item n; n.dir = full; n.rel = it.rel; n.rel.push_back(names[i]);
@@ -325,6 +325,10 @@ struct Pad {
     bool locked = false;
     uint32_t pool = 0;      /* per-pad pool override: a set of categories (bit n = category n); 0 = the layout's default */
     float gain = 1.0f;      /* 0..2, 1 = unity */
+    /* PotentialKits */
+    int pitch = 0;          /* semitones, -12..12 */
+    int decay = 100;        /* 0..100 %: 100 = the whole sample, lower fades it out sooner */
+    int choke = 0;          /* 0 = none, 1..4: pads in one group cut each other off (closed and open hats) */
 };
 
 /* categories with no dedicated slot (otherPoolCats), plus fx */

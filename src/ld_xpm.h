@@ -80,7 +80,7 @@ inline std::string mpc_sample_name(const std::string &path) {
     return t;
 }
 
-struct XpmEntry { int pad; std::string sample_name, src, ext, dest; uint32_t frames; bool gathered; };
+struct XpmEntry { int pad; std::string sample_name, src, ext, dest; uint32_t frames; bool gathered; const std::vector<int16_t> *rendered = 0; };
 
 /* <ProgramPads>: pads.value0..15 are pad LED colours as decimal RGB. Only those 16 slots inside the "pads"
  * block are touched (the JS original replaced the FIRST `value0: <digits>` in the file, which is the "Type"
@@ -105,13 +105,22 @@ inline std::string pad_colours(const Pad pads[NPADS]) {
     return s;
 }
 
-inline std::string instrument_block(int n, const std::string &name, uint32_t slice_end) {
+inline std::string instrument_block(int n, const std::string &name, uint32_t slice_end, int tune = 0, int mute_group = 0) {
     char tmp[32];
     snprintf(tmp, sizeof tmp, "%d", n);
     std::string b = replace_first(XPM_INSTRUMENT, "<Instrument number=\"1\">", std::string("<Instrument number=\"") + tmp + "\">");
     b = replace_first(b, "<SampleName>PRGKIT26BD1</SampleName>", "<SampleName>" + xml_escape(name) + "</SampleName>");
     snprintf(tmp, sizeof tmp, "%u", (unsigned)slice_end);
     b = replace_first(b, "<SliceEnd>33688</SliceEnd>", std::string("<SliceEnd>") + tmp + "</SliceEnd>");
+    if (tune) {                /* PotentialKits: a pad's PITCH, when the sample is linked rather than written as heard */
+        snprintf(tmp, sizeof tmp, "%d", tune);
+        b = replace_first(b, "        <TuneCoarse>0</TuneCoarse>\n        <TuneFine>0</TuneFine>\n        <Mono>",
+                          std::string("        <TuneCoarse>") + tmp + "</TuneCoarse>\n        <TuneFine>0</TuneFine>\n        <Mono>");
+    }
+    if (mute_group > 0) {      /* PotentialKits: CHOKE as the MPC's own mute group */
+        snprintf(tmp, sizeof tmp, "%d", mute_group);
+        b = replace_first(b, "<MuteGroup>0</MuteGroup>", std::string("<MuteGroup>") + tmp + "</MuteGroup>");
+    }
     if (name.empty()) {        /* an empty pad differs from a used one by two inert defaults in a real MPC export */
         b = replace_first(b, "<WarpTempo>20.000000</WarpTempo>", "<WarpTempo>120.000000</WarpTempo>");
         b = replace_first(b, "<SliceLoopCrossFadeLength>0</SliceLoopCrossFadeLength>", "<SliceLoopCrossFadeLength>-1</SliceLoopCrossFadeLength>");
@@ -121,7 +130,7 @@ inline std::string instrument_block(int n, const std::string &name, uint32_t sli
 
 /* -> the .xpm text; `manifest` lists the used pads (a name clash gets the pad number appended) */
 inline std::string build_xpm(const std::string &kit_name, const Pad pads[NPADS], std::vector<XpmEntry> &manifest,
-                             std::vector<std::string> &warnings) {
+                             std::vector<std::string> &warnings, const std::vector<int16_t> *const *rendered = 0) {
     std::set<std::string> seen;
     std::string instrs, nm;
     for (int n = 1; n <= XPM_INSTRUMENTS; n++) {
@@ -134,12 +143,19 @@ inline std::string build_xpm(const std::string &kit_name, const Pad pads[NPADS],
             seen.insert(sn);
             XpmEntry e;
             e.pad = n; e.sample_name = sn; e.src = src; e.ext = file_ext(src); e.dest = sn + e.ext; e.gathered = false;
-            e.frames = frame_count(src);
+            e.rendered = rendered ? rendered[n - 1] : 0;
+            if (e.rendered) { e.ext = ".wav"; e.dest = sn + ".wav"; }
+            e.frames = e.rendered ? (uint32_t)(e.rendered->size() / 2) : frame_count(src);
             if (e.frames > 0) se = e.frames;
             else warnings.push_back("pad " + std::to_string(n) + ": could not read sample length (may play silent)");
             manifest.push_back(e);
         }
-        instrs += instrument_block(n, sn, se);
+        int tune = 0, mg = 0;
+        if (n <= NPADS && pads[n - 1].has) {
+            mg = pads[n - 1].choke;
+            if (!(rendered && rendered[n - 1])) tune = pads[n - 1].pitch;   /* written as heard: the pitch is in the file */
+        }
+        instrs += instrument_block(n, sn, se, tune, mg);
     }
     std::string pnm = "    <PadNoteMap>\n", pgm = "    <PadGroupMap>\n";
     for (int i = 1; i <= XPM_INSTRUMENTS; i++) {
@@ -186,27 +202,55 @@ inline bool make_dirs(const std::string &path) {
     return stat(path.c_str(), &s) == 0 && S_ISDIR(s.st_mode);
 }
 
+/* a 16-bit stereo 44.1 kHz WAV (a pad as you hear it in the plugin) */
+inline bool write_wav(const std::string &path, const std::vector<int16_t> &lr) {
+    std::string tmp = path + ".part";
+    FILE *f = fopen(tmp.c_str(), "wb");
+    if (!f) return false;
+    uint32_t data = (uint32_t)(lr.size() * 2);
+    uint8_t h[44] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V', 'E', 'f', 'm', 't', ' ', 16, 0, 0, 0, 1, 0, 2, 0,
+                     0x44, 0xAC, 0, 0, 0x10, 0xB1, 2, 0, 4, 0, 16, 0, 'd', 'a', 't', 'a', 0, 0, 0, 0};
+    uint32_t riff = 36 + data;
+    for (int i = 0; i < 4; i++) { h[4 + i] = (uint8_t)(riff >> (8 * i)); h[40 + i] = (uint8_t)(data >> (8 * i)); }
+    bool ok = fwrite(h, 1, 44, f) == 44;
+    for (size_t i = 0; ok && i < lr.size(); i++) {
+        uint8_t b[2] = {(uint8_t)(lr[i] & 255), (uint8_t)((uint16_t)lr[i] >> 8)};
+        ok = fwrite(b, 1, 2, f) == 2;
+    }
+    if (fclose(f) != 0) ok = false;
+    if (!ok || rename(tmp.c_str(), path.c_str()) != 0) { remove(tmp.c_str()); return false; }
+    return true;
+}
+
 struct ExportResult { bool ok = false; std::string path, error; int pads = 0, gathered = 0; std::vector<std::string> warnings; };
 
 /* exportXpm: <dir>/<name>/<name>.xpm + each sample copied beside it (named to match <SampleName>) + MANIFEST.txt.
  * Samples are byte-exact copies; the MPC loads "<SampleName>.wav" from the .xpm's own folder. */
-inline ExportResult export_xpm(const std::string &dir, const std::string &name_in, const Pad pads[NPADS], bool link = false) {
+inline ExportResult export_xpm(const std::string &dir, const std::string &name_in, const Pad pads[NPADS], bool link = false,
+                               const std::vector<int16_t> *const *rendered = 0) {
     ExportResult r;
     std::string name = name_in;
     for (size_t i = 0; i < name.size(); i++) if (name[i] == '/' || name[i] == '\\') name[i] = '_';
     std::vector<XpmEntry> man;
-    std::string text = build_xpm(name, pads, man, r.warnings);
+    std::string text = build_xpm(name, pads, man, r.warnings, rendered);
     r.pads = (int)man.size();
     if (man.empty()) { r.error = "kit has no assigned pads"; return r; }
     std::string d = dir + "/" + name;
     if (!make_dirs(d)) { r.error = "cannot create " + d; return r; }
     r.path = d + "/" + name + ".xpm";
     if (!write_text(r.path, text)) { r.error = "xpm write failed"; return r; }
-    std::string mf = link ? "Lucky Dip MPC export: the files below are links to the originals, placed next to this .xpm (keep the originals where they are).\n" : "Lucky Dip MPC export: the files below were copied next to this .xpm.\n";
+    std::string mf = link ? "PotentialKits MPC export: the files below are links to the originals, placed next to this .xpm (keep the originals where they are).\n" : "PotentialKits MPC export: the files below were copied next to this .xpm.\n";
     mf +=
                      "Any row tagged [MISSING] must be placed by hand (keep the left-hand name).\n\n";
     for (size_t i = 0; i < man.size(); i++) {
         XpmEntry &m = man[i];
+        if (m.rendered) {   /* pitch, decay or gain changed: the pad as you hear it, not the original file */
+            m.gathered = write_wav(d + "/" + m.dest, *m.rendered);
+            if (m.gathered) r.gathered++;
+            else r.warnings.push_back("pad " + std::to_string(m.pad) + ": could not write " + m.dest);
+            mf += m.dest + "\t" + m.src + (m.gathered ? "\t[as heard: pitch, decay and gain applied]\n" : "\t[MISSING]\n");
+            continue;
+        }
         if (m.ext != ".wav") r.warnings.push_back("pad " + std::to_string(m.pad) + ": source is " + m.ext + "; the MPC loads " + m.sample_name + ".wav beside the .xpm");
         bool linked = false;
         if (link) {      /* a symlink beside the .xpm instead of a copy: the samples stay where they are */
