@@ -1,28 +1,29 @@
 {
-  "name": "Lucky Dip",
-  "vendor": "sd88me",
-  "uid": "LkDp",
-  "version": 901,
-  "so": "lucky_dip.so",
-  "targets": ["armv7", "aarch64"],
-  "params": "params.json",
-  "defines": {
-    "MODULE_SUBDIR": "\"luckydip\""
-  },
-  "build": {
-    "root": "..",
-    "sources": [
-      "src/engine.cpp"
-    ],
-    "cflags": [
-      "-Isrc",
-      "-std=gnu++11",
-      "-pthread"
-    ],
-    "libs": [
-      "-pthread"
-    ]
-  },
-  "layout": "layout.conf",
-  "art": "html"
+ "name": "PotentialKits",
+ "vendor": "PotentialBreaks",
+ "uid": "PbKt",
+ "version": 1000,
+ "so": "potentialkits.so",
+ "params": "params.json",
+ "layout": "layout.conf",
+ "defines": {
+  "PARAM_TEXT_MAX": 64,
+  "MODULE_SUBDIR": "\".\""
+ },
+ "build": {
+  "root": "..",
+  "sources": [
+   "src/engine.cpp"
+  ],
+  "cflags": [
+   "-Isrc",
+   "-std=gnu++11",
+   "-pthread"
+  ],
+  "libs": [
+   "-pthread"
+  ]
+ },
+ "art": "html",
+ "nrpn": false
 }

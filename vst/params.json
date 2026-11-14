@@ -1,5 +1,5 @@
 {
- "name": "Lucky Dip",
+ "name": "PotentialKits",
  "params": [
   {
    "key": "status",
@@ -1180,6 +1180,289 @@
     "ON"
    ],
    "default": 1
+  },
+  {
+   "key": "sel_pitch",
+   "name": "Pitch",
+   "min": -12,
+   "max": 12,
+   "default": 0,
+   "unit": "st",
+   "display": "int"
+  },
+  {
+   "key": "sel_decay",
+   "name": "Decay",
+   "min": 0,
+   "max": 100,
+   "default": 100,
+   "unit": "%",
+   "display": "int"
+  },
+  {
+   "key": "sel_choke",
+   "name": "Choke",
+   "options": [
+    "OFF",
+    "1",
+    "2",
+    "3",
+    "4"
+   ],
+   "default": 0
+  },
+  {
+   "key": "tile_1",
+   "name": "Pad 1 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_2",
+   "name": "Pad 2 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_3",
+   "name": "Pad 3 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_4",
+   "name": "Pad 4 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_5",
+   "name": "Pad 5 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_6",
+   "name": "Pad 6 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_7",
+   "name": "Pad 7 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_8",
+   "name": "Pad 8 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_9",
+   "name": "Pad 9 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_10",
+   "name": "Pad 10 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_11",
+   "name": "Pad 11 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_12",
+   "name": "Pad 12 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_13",
+   "name": "Pad 13 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_14",
+   "name": "Pad 14 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_15",
+   "name": "Pad 15 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "tile_16",
+   "name": "Pad 16 Tile",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "style_1",
+   "name": "Kit Style 1",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "style_2",
+   "name": "Kit Style 2",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "style_3",
+   "name": "Kit Style 3",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "style_4",
+   "name": "Kit Style 4",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "style_5",
+   "name": "Kit Style 5",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "style_6",
+   "name": "Kit Style 6",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "style_7",
+   "name": "Kit Style 7",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "style_8",
+   "name": "Kit Style 8",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "style_9",
+   "name": "Kit Style 9",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "dice",
+   "name": "Roll",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "wild",
+   "name": "Roll Wildness",
+   "options": [
+    "MILD",
+    "MEDIUM",
+    "WILD"
+   ],
+   "default": 1
+  },
+  {
+   "key": "theme",
+   "name": "Look",
+   "options": [
+    "Print Plate",
+    "Night Rack",
+    "Colour Block"
+   ],
+   "default": 0
+  },
+  {
+   "key": "user_save",
+   "name": "Save User Kit",
+   "options": [
+    "OFF",
+    "ON"
+   ],
+   "default": 0
+  },
+  {
+   "key": "user_1",
+   "name": "User Kit 1",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "user_2",
+   "name": "User Kit 2",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "user_3",
+   "name": "User Kit 3",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "user_4",
+   "name": "User Kit 4",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "user_5",
+   "name": "User Kit 5",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "user_6",
+   "name": "User Kit 6",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "user_7",
+   "name": "User Kit 7",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "user_8",
+   "name": "User Kit 8",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "sel_pill",
+   "name": "Pad Sound",
+   "min": 0,
+   "max": 0,
+   "display": "string"
+  },
+  {
+   "key": "manual_page",
+   "name": "Manual Page",
+   "options": [
+    "START",
+    "KIT",
+    "DIP",
+    "EXPORT",
+    "POOL",
+    "HELP"
+   ],
+   "default": 0
   }
  ]
 }

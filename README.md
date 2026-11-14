@@ -1,164 +1,120 @@
-# Lucky Dip
+# PotentialKits
 
-**A random drum-kit builder and inspiration machine for Akai MPC and Force.**
+**A drum kit from your own samples, one tap at a time.** PotentialKits reaches into your sample folders and pulls out 16 sounds for the pads: a kick, a snare, hats, percussion, and a few surprises. Lock the ones you like, roll the rest, shape each pad's pitch, decay and choke, then save it as a real MPC drum program.
 
-Your sample library is bigger than you remember. Lucky Dip reaches in, pulls out sixteen sounds, drops them on the pads and
-lets you play them straight away. Don't like one? Reroll it. Love one? Lock it and dip again. When the kit feels right,
-export it as a normal MPC drum program.
+![PotentialKits' KIT page on the MPC](docs/images/potentialkits.png)
 
-It's a way to **find the samples you forgot you had**: the pack you downloaded and never opened, the odd hit buried three
-folders deep, the old recording you made years ago. Every dip is a surprise, and some of them are good.
+*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.0.0*
 
-<img src="docs/img/pads.png" width="640" alt="Lucky Dip: the PADS page">
+PotentialKits is a fork of **[Lucky Dip](https://github.com/sd88me/mpc-vst-luckydip)** by sd88me. It keeps Lucky Dip's engine (the library scan, the way samples are sorted, the random assignment, level matching and the MPC program export) and Lucky Dip's full history is in this repo. Thanks to sd88me.
 
-Lucky Dip is a native plugin (VST2) for MPC OS standalone devices, with its own MPC screen and Q-Links. It runs on the
-**MPC Live III** (64-bit) and on the **Akai Force** and first-generation standalone MPCs (32-bit).
+Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC like its own instruments, with its own touchscreen pages, Q-Link control and project recall, and no computer needed while you play.
 
-## What's new in 1.0
-- **A new screen**, in the familiar candy colours: tap a sample's name to hear it, see at a glance what each pad drew
-  (a coloured category band), select pads on an MPC-style 4x4 grid, and pick folders from a list.
-- **Works on the MPC Live III**, and finds your samples on any unit: the internal drive, SD cards and USB sticks are found
-  automatically, and folders show where they are (`Internal / Expansions`, `MYSTICK / Samples`).
-- **SETTINGS is clearer**: three cards (where samples come from, where kits go, library rules), folder pick-lists, and
-  one-tap choices for the export mode and the maximum file size.
-- Pads keep their pitch when the project runs at 48 kHz, and playback never waits for the library.
-- Projects saved with Lucky Dip 0.9 load as before: same plugin, same kit, same settings.
+**[Download the latest release](../../releases/latest)** · [The PotentialSuite manual](https://github.com/PotentialBreakfast/potential-plugins/blob/main/MANUAL.md) · [Ideas and bugs](../../issues/new/choose)
+
+## What's new compared with Lucky Dip
+
+- **KIT STYLES:** one tap for a whole kit in a style: **CLASSIC**, **BOOM BAP**, **LO-FI**, **TRAP**, **HOUSE**, **DUSTY JAZZ**, **PERCUSSION**, **ELECTRO** or **WEIRD**. A style sets what each pad draws from, its pitch, decay and choke, then dips. Locked pads are left alone.
+- **ROLL** with **MILD**, **MEDIUM** or **WILD**, like the rest of the PotentialSuite: MILD gives up to four pads a new sample, MEDIUM makes a new kit with a little pitch and decay, WILD also mixes up what the pads draw from.
+- **PITCH, DECAY and CHOKE on every pad.** PITCH runs 12 semitones each way. DECAY shortens a hit (100 % is the whole sample). Pads in the same CHOKE group cut each other off, like closed and open hats. All three are in the exported kit (below).
+- **USER KITS:** 8 slots. Tap **SAVE**, then a slot, to keep the whole kit; tap a slot to bring it back in any project. They're kept beside your VST2 Plugins folder, so updates keep them.
+- **The KIT page:** the 16 pads as tiles laid out like the MPC's own (A01 bottom left). Tap one to hear it and edit it beside them.
+- **Exports as you hear it.** A pad with its pitch, decay or gain changed is written as a new WAV, exactly as it plays in the plugin; the choke groups become the program's mute groups.
+- **The PotentialSuite looks** (Print Plate, Night Rack, Colour Block) and a **MANUAL** page on the MPC's screen.
 
 ## What it does
-- **Scans your sample folders** and sorts every sample into one of 23 categories (kick, snare, rim, clap, hat, closed hat,
-  open hat, tom, conga, percussion, crash, ride, cymbal, fx, glitch, vox, bass, synth, stab, chord, lead, pad, other) from the
-  folder and file names. No tagging by hand.
-- **Fills 16 pads at random.** Pad 1 draws a kick, pad 2 a snare, pad 5 a hat and so on, like a real drum kit. Pads 12-15 draw
-  from everything else (vocals, bass, synths, chords, glitches...) for the surprises.
-- **Plays the kit.** Hit the pads, or play it from the sequencer, and hear it before you commit to anything.
-- **Lets you steer.** Lock the pads you like, reroll the ones you don't, change what a pad is allowed to pick from, mark
-  favourites (more likely to come up) and rejects (never again).
-- **Matches levels** so a loud sample doesn't swamp a quiet one.
-- **Exports an MPC drum program** (`.xpm`) that you can load like any other kit.
 
-## Requirements
-- An MPC OS standalone device: MPC Live III, Akai Force, MPC Live / Live II / One / X / Key 61. Tested on a **Live III** and a
-  **Force** (MPC OS 3.9.1). MPC OS 3.x is needed (the 0.9 build is the last one listed for 2.x).
-- Samples as **WAV** (8/16/24-bit, 32-bit, 32-bit float; mono or stereo; any sample rate) or **AIFF**, on the internal drive,
-  a card or a USB stick. Compressed WAV isn't supported. Very long files are cut to 15 seconds on the pad (Lucky Dip is for
-  one-shots).
-
-## Install
-Download the zip for your device from this repo's **Releases** page:
-- `Lucky-Dip-<version>-mpc-aarch64.zip`: **MPC Live III** and other 64-bit units.
-- `Lucky-Dip-<version>-mpc-armv7.zip`: **Force**, MPC Live / Live II / One / X / Key 61.
-
-**With the Plugin Manager** (from [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins)): install Lucky Dip from the
-catalog, or upload the zip.
-
-**By hand** (needs root SSH access; installing plugins this way is unofficial, so back up first and use it at your own risk):
-copy the zip to the device, unzip it and run its installer: `sh install.sh`. It stops MPC (**save your project first**), puts
-Lucky Dip in place, registers it and starts MPC again. Running it again upgrades in place and keeps your own files
-(`luckydip/`: the sample index, favourites and rejects).
-
-Then add a track and choose **Lucky Dip** as its plugin (on a Live III it is listed under External Plugins; Preferences →
-Enhancements must have External Plugin Support on).
-
-**Upgrading from 0.9:** install over it as above. Your projects, favourites and rejects carry over. Remove Lucky Dip from every
-track (or reopen the project) after updating: MPC keeps a plugin loaded while any instance of it exists.
-
-## Quick start
-1. Add a **Lucky Dip** track. The first time, it scans your drives in the background; the banner shows the sample count when
-   it's done.
-2. Press **GENERATE ALL**. Sixteen samples land on the pads; the names and categories appear on the tiles.
-3. Play the pads, or tap a sample's name to hear it.
-4. Don't like a pad? **REROLL** it. Like one? **LOCK** it, then **GENERATE ALL** again: locked pads keep their sample.
-5. Happy with the kit? Press **EXPORT KIT** (PAD EDIT or SETTINGS). Your new program appears in the browser.
-
-Pads answer MIDI notes 0-15 (the 16-pad drum layout) and 36-51, so they work from the pads, a keyboard or a sequence.
+- **Scans your sample folders** and sorts every sample into one of 23 sounds (kick, snare, rim, clap, hat, closed hat, open hat, tom, conga, percussion, crash, ride, cymbal, fx, glitch, vox, bass, synth, stab, chord, lead, pad, other) from its folder and file names. No tagging by hand.
+- **Fills 16 pads at random**, like a real drum kit: a kick on A01, a snare on A02, hats, toms and percussion, and the top pads for surprises.
+- **Plays the kit** from the pads, a keyboard or the sequencer (MIDI notes 0-15 and 36-51).
+- **Lets you steer:** lock the pads you like, reroll the ones you don't, change what a pad may draw from (the **POOL** page), mark favourites (twice as likely to come up) and rejects (never again).
+- **MATCH LEVELS** evens out loud and quiet pads.
+- **EXPORT KIT** writes a normal MPC drum program (`.xpm`) with your 16 sounds on pads A01-A16.
 
 ## The pages
 
-### PADS 1-8 and PADS 9-16
-One tile per pad: the category it drew, the sample name (tap it to hear the pad), a **GAIN** slider, **LOCK** and **REROLL**.
-Q-Links turn the gains (two blocks of four per page). **GENERATE ALL** is in the banner on every page, next to the status line
-and the library's sample count.
-
-### PAD EDIT
-<img src="docs/img/pad-edit.png" width="640" alt="PAD EDIT">
-
-Everything about one pad.
-- **PADS**: tap a pad on the 4x4 grid to edit it (laid out like the MPC's pads); the coloured bar under each pad shows what it
-  holds. With **FOLLOW PLAYED PAD** on, the page follows the last pad you played; turn it off to edit one pad while playing others.
-- **SELECTED PAD**: its category and sample (tap the name to hear it), **GAIN**, **LOCK**, **REROLL**, **CLEAR**,
-  **FAVOURITE** (twice as likely to come up in future dips, on any kit) and **REJECT** (never picked again, until you change
-  your mind in `prefs.txt`; then **REROLL** for a new one).
-- **THIS PAD DRAWS FROM**: which categories the pad may pick from, grouped as drums, metals, tonal and texture. The lit keys are
-  the pad's pool, which starts as that pad's usual categories. Tap to add or remove, for example make pad 1 draw kicks *and* bass.
-- **KIT**: **CLEAR ALL** (empty every unlocked pad), **MATCH LEVELS**, **UNLOCK ALL** and **EXPORT KIT**.
-
-### SETTINGS
-<img src="docs/img/settings.png" width="640" alt="SETTINGS">
-
-Where Lucky Dip looks, where it saves, and how it behaves. Changes are saved with your project.
-
-| Setting | What it does |
+| Page | What's on it |
 |---|---|
-| **SAMPLE SOURCE: LOCATION** | The place to draw samples from. `Default (auto)` means the `Expansions` and `Samples` folders on every drive. Or pick any folder at the top of a drive. Tap the field for a list, or step with the arrows. |
-| **SAMPLE SOURCE: INSIDE** | Optionally narrow it to one folder inside that location, for example a single pack. The double arrows jump 10 folders. |
-| **RESCAN** | Rebuilds the sample list. Press it after changing the source or the library rules. The list is saved between sessions, so startup is quick. |
-| **EXPORT FOLDER** | Where exported kits are saved, chosen the same way. The default is the Force's `Expansions/Kits & Patterns` folder (where it browses for kits), else `MPC Documents/Lucky Dip` on a Live III, else a `kits` folder inside the plugin's `luckydip` folder. |
-| **SAMPLES: COPY INTO KIT / LINK ORIGINALS** | Copy puts a copy of every sample next to the exported program, so the kit is self-contained. Link makes links instead, so nothing is duplicated, but the originals must stay where they are (and the drive must support links, otherwise it copies). |
-| **SKIP LOOPS** | Leaves out files whose names look like loops ("loop", "Lp", a BPM tag such as `120 bpm` or `[120]`) and whole folders named like loops ("Clips & Loops"). On by default. |
-| **NO DUPLICATES** | A sample is used on only one pad of a kit. If a pad's pool runs out of unused samples it may repeat one rather than stay empty. |
-| **MAX FILE SIZE** | Leaves out files bigger than this (Off, 1, 2, 5, 10 or 20 MB). Keeps long recordings and loops out of a drum kit. |
-| **UNLOCK ALL PADS** | Unlocks every pad. |
+| **KIT** | **NEW KIT**, the 16 pad tiles, and the selected pad: its sample, **LOCK**, **PLAY**, **REROLL**, **CLEAR**, **GAIN**, **PITCH**, **DECAY**, **CHOKE**, **FAVOURITE** and **REJECT** |
+| **DIP** | **KIT STYLES**, **ROLL**, **USER KITS**, and **NEW KIT**, **CLEAR ALL**, **UNLOCK ALL**, **MATCH LEVELS**, **EXPORT KIT** |
+| **POOL** | What the selected pad draws from, grouped as drums, metals, tonal and texture. **FOLLOW PLAYED PAD** makes the selection follow the pad you play |
+| **SETUP** | Where samples come from and kits go, **RESCAN**, copy or link samples on export, **SKIP LOOPS**, **NO DUPLICATES**, **MAX SIZE**, and the **LOOK** |
+| **MANUAL** | The manual, on the MPC's screen |
 
-<img src="docs/img/folder-list.png" width="480" alt="The folder list">
+![The DIP page](docs/images/potentialkits-dip.png)
 
-## Good to know
-- **Your kit is saved with the project**: the samples (by location), locks, gains, category choices and settings. Samples
-  aren't copied into the project, so if you move or delete one, its tile shows "MISSING" and `!` before the name.
-- **Gain and MATCH LEVELS** change how the pads sound in the plugin. An exported program uses each sample at its own level.
-- **Exported programs** are standard 128-pad MPC drum programs with your 16 samples on pads 1-16, named
-  `LuckyDip-MMDD-HHMMSS`. Pad colours follow the category.
-- **Pads are one-shots**: no pitch, envelope or choke groups; hitting a pad again restarts it.
-- **Several Lucky Dip tracks share one sample list.** If they use different sources, the last rescan wins.
-- **How samples are sorted**: by the folder names above the file first (the deepest matching one wins), then the file name. A
-  folder called `Kicks`, or a file called `punchy_kick_01.wav`, is a kick. Unnamed folders end up in "other", which only the
-  catch-all pads draw from.
+## Where it finds your samples
 
-## Files and the config file
-Lucky Dip keeps a `luckydip` folder inside its plugin folder:
-- `index.cache`: the saved sample list (delete it to force a fresh scan).
-- `prefs.txt`: your favourites (`F`) and rejects (`R`), one path per line. Edit it to undo a reject.
-- `luckydip.conf` (optional, create it yourself): sets what `Default (auto)` means, for places the SETTINGS page can't reach.
+You don't have to type any paths. By default it scans the **Expansions** and **Samples** folders at the top of every drive (the internal drive, SD cards and USB sticks). On the **SETUP** page you can pick any folder at the top of a drive instead, and narrow it to one folder inside it. Press **RESCAN** after changing it. The sample list is saved, so it starts quickly next time.
+
+**WAV** (8, 16, 24 and 32-bit, float, mono or stereo, any sample rate) and **AIFF** are read.
+
+## Exported kits
+
+- Kits go to **`PotentialKits/Kits`** at the top of the drive the plugin is on (on a Force, its `Expansions/Kits & Patterns`; on a Live III, `MPC Documents/PotentialKits`), or the folder you pick on the SETUP page. Each kit is a folder named `PotentialKits-MMDD-HHMMSS` with the `.xpm` and its samples.
+- **COPY SAMPLES** (the default): plain pads are copied as they are; pads with PITCH, DECAY or GAIN changed are written as you hear them.
+- **LINK TO ORIGINALS:** the samples stay where they are and the kit links to them. PITCH is set on the MPC's pad; decay and gain are not saved this way.
+- **CHOKE** becomes the program's mute groups either way.
+
+## Files
+
+- **`data/`** in the plugin's folder: `index.cache` (the sample list), `prefs.txt` (favourites `F` and rejects `R`, one path per line: edit it to undo a reject), and an optional `potentialkits.conf` you can make yourself:
   ```
   root=/media/<card>/My Samples      # repeatable: every root= line is scanned
   export_dir=/media/<card>/My Kits
   skip_loops=1
   max_mb=5
   ```
-- `kits/`: only used when there's no better export folder.
+  Updates keep this folder.
+- **`PotentialSuite Presets/PotentialKits/`** beside your VST2 Plugins folder: the USER KITS, one file each.
 
-## 16-pad drum layout (optional, advanced)
-By default MPC treats a plugin track as a keyboard. A separate, optional patch from
-[mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (`tools/mpc_patch/`) makes MPC show the proper 16-pad drum layout
-for Lucky Dip (and a few other drum plugins) on the firmware it supports. Read its README first. Lucky Dip works fine without it.
+## Three looks
 
-## Building from source
-Built with the MPC plugin builder (`tools/build.py`, set `MPC_BUILDER` to its checkout):
-```
-./build.sh          # build/"sd88me - VST - Lucky Dip"/: the 32-bit and 64-bit plugin and its screen (Plugin Skins/)
-./build.sh test     # plus the offline host test (tests/run.sh, ASan/UBSan) and the builder's host simulator
-./build.sh beta     # "Lucky Dip 2 Beta" with its own id, to install next to the release
-tools/package_catalog.sh   # dist/: the release zips, one per CPU
-```
-- `src/engine.cpp` is the kit engine; `src/LuckyDipPlugin.cpp` is the plugin around it. The parameter order is frozen in
-  `vst/params.lock` (`tools/gen_params.py` refuses changes; new parameters are appended).
-- The screen is generated: `tools/make_tui.py` (pages and controls) and `tools/ld_art.py` (all art, drawn from code);
-  `python3 tools/make_tui.py --preview` writes `docs/skin-preview/`.
-- The 0.9 build (`vst/`, `vendor/mpc-vst/`) is kept for reference. More detail is in `docs/NOTES.md`; planned work in `docs/ROADMAP.md`.
+PotentialKits comes in three looks: **Print Plate** (the default), **Night Rack** and **Colour Block**. Open the **SETUP** page and tap one of the LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again.
 
-## Credits
-The kit-building engine (sample classification, seeded random assignment, loudness matching, MPC program export) originated in
-[schwung-kit-builder](https://github.com/sd88me/schwung-kit-builder) and was ported to
-[force-kit-builder](https://github.com/sd88me/force-kit-builder), which Lucky Dip follows. Screen text uses Titillium Web (SIL
-Open Font License, `tools/fonts/OFL.txt`). Built on [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins).
+## Limitations
 
-MIT licensed, see `LICENSE`.
+- **Pads are one-shots.** Hitting a pad again restarts it. One voice per pad.
+- **Very long files are cut to 15 seconds** on the pad: PotentialKits is for one-shots.
+- **Samples aren't copied into your project.** If you move or delete one, its tile shows `!` before the name.
+- **Several PotentialKits tracks share one sample list.** If they use different sources, the last rescan wins.
+- **Linked kits** keep decay and gain only in the plugin, not in the MPC program.
+- **Not yet tested on an MPC.** Lucky Dip, which it is built on, is tested on a Live III and a Force. Please [tell me how it goes](../../issues/new/choose).
+
+## Will it work on my MPC?
+
+| | |
+|---|---|
+| **Should work on** | Any standalone MPC on **MPC OS 3.10.1 or later**, 32-bit (One, Live, Live II, X, Key 61, Key 37) and 64-bit (Live III, XL). Also Gen1 MPCs on older MPC OS 3.x with the community set-up, and the Force |
+| **Not supported** | **MPC OS 2.x** |
+
+## Install
+
+- **With MPC TOOLS:** in the Plugins tab, tap **UPDATE** on PotentialKits.
+- **By hand (MPC OS 3.10.1+):** download `PotentialKits-<version>-akai-vst2.zip` from [Releases](../../releases), unzip it, and copy the folder `PotentialBreaks - VST - PotentialKits` into **VST2 Plugins** at the top of a drive. Turn on **Preferences → Enhancements (Beta) → External Plugin Support** and restart.
+- **With the Open MPC installer or Plugin Manager:** `-mpc-armv7.zip` for a Gen1 (MPC One, Live, Live II, X, Key, Force), `-mpc-aarch64.zip` for a Gen2.
+
+Then add a track and choose **PotentialKits** as its plugin instrument. Install it one way only.
+
+**Coming from Lucky Dip?** PotentialKits is a separate plugin with its own name, so both can be installed side by side. Your Lucky Dip projects keep using Lucky Dip.
+
+## Ideas, bugs and criticism: all welcome
+
+[Open an issue](../../issues/new/choose). Short reports are fine.
+
+## More from PotentialBreaks
+
+PotentialKits is part of the **[PotentialSuite](https://github.com/PotentialBreakfast/potential-plugins)**: samplers, a record digger and effects that share the same looks, with FX chain presets across Patina, Punch, Grit and Bleed. Try **Break Bus** on a PotentialKits kit: Punch, Grit, Bleed and Patina on its inserts, the same preset name in each.
+
+## Build it yourself
+
+See [BUILD.md](BUILD.md).
+
+## Credits and licence
+
+- **[Lucky Dip](https://github.com/sd88me/mpc-vst-luckydip)** by sd88me (MIT): the kit-building engine (sample classification, random assignment, loudness matching, MPC program export), which came from his [schwung-kit-builder](https://github.com/sd88me/schwung-kit-builder) and [force-kit-builder](https://github.com/sd88me/force-kit-builder). His notes are in [docs/LUCKY_DIP_NOTES.md](docs/LUCKY_DIP_NOTES.md).
+- Built with the [Open MPC kit](https://github.com/open-mpc/mpc-vst-plugins) (MIT).
+- Fonts: Jost, DM Mono, IBM Plex Sans Condensed, IBM Plex Mono, Bricolage Grotesque and Space Mono (SIL Open Font License 1.1), in `vst/skin/looks/fonts/` with their licences.
+- Made with help from Claude (Anthropic).
+
+MIT, see [LICENSE](LICENSE). Not affiliated with or endorsed by Akai Professional or inMusic. MPC is their trademark.

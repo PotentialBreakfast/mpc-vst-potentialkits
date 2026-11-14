@@ -1,0 +1,53 @@
+= START
+# PotentialKits: a drum kit from your own samples
+Reaches into your sample folders and pulls out 16 sounds for the pads: a kick, a snare, hats and so on, plus a few surprises. Lock what you like, roll the rest, then save it as a real MPC drum program.
+
+- Load it as a plugin instrument (a plugin program). The first time, it scans your drives for samples.
+- It looks in the Expansions and Samples folders on every drive. Pick another folder on the SETUP page.
+- Tap NEW KIT, a KIT STYLE on the DIP page, or ROLL.
+- Play the pads, or tap a tile on the KIT page to hear it.
+
+The full PotentialSuite manual: github.com/PotentialBreakfast/potential-plugins
+
+= KIT
+# The KIT page
+- The 16 tiles are laid out like the MPC's pads (A01 bottom left). A tile shows its sample; * means locked.
+- Tap a tile to hear it and select it. With FOLLOW PLAYED PAD on (POOL page), playing a pad selects it too.
+- LOCK keeps a pad's sample through NEW KIT, styles and ROLL. REROLL gives the pad a new one. CLEAR empties it.
+- GAIN, PITCH (12 semitones each way) and DECAY (100 % is the whole sample) shape the pad.
+- CHOKE: pads in the same group cut each other off, like closed and open hats. OFF plays freely.
+- FAVOURITE makes a sample twice as likely to come up again. REJECT means it never comes up.
+
+= DIP
+# Styles, ROLL and USER kits
+- KIT STYLES set what each pad draws from, its pitch, decay and choke, then dip: CLASSIC, BOOM BAP, LO-FI, TRAP, HOUSE, DUSTY JAZZ, PERCUSSION, ELECTRO and WEIRD. Locked pads are left alone.
+- ROLL: MILD gives up to four pads a new sample. MEDIUM makes a new kit with a little pitch and decay. WILD mixes up what the pads draw from too.
+- USER KITS: tap SAVE, then a slot, to keep the whole kit. Tap a slot to bring it back, in any project.
+- NEW KIT, CLEAR ALL, UNLOCK ALL, MATCH LEVELS (evens out loud and quiet pads) and EXPORT KIT.
+
+= EXPORT
+# Saving the kit
+- EXPORT KIT writes a normal MPC drum program (.xpm) with your 16 samples on pads A01 to A16. Load it from the browser like any kit.
+- Pads with PITCH, DECAY or GAIN changed are saved as you hear them, as new WAV files. Other pads are copied as they are.
+- CHOKE becomes the program's mute groups.
+- With LINK TO ORIGINALS (SETUP page) the samples are linked, not copied: PITCH is set on the pad instead, and decay and gain are not saved.
+- Kits go to PotentialKits/Kits on the plugin's drive, or the folder you pick on the SETUP page.
+- Your project remembers the kit, the locks and every setting. USER KITS live in PotentialSuite Presets/PotentialKits.
+
+= POOL
+# What a pad draws from
+- The POOL page shows the selected pad's sounds. A lit key is a sound the pad can draw from.
+- Tap keys to add or remove sounds: make pad 1 draw kicks and bass, say. Then REROLL it on the KIT page.
+- Sounds are sorted by their folder and file names: a folder called Kicks, or a file called punchy_kick_01.wav, is a kick.
+- Files in folders with no clear name end up in OTHER, which only a few pads draw from.
+
+= HELP
+# Good to know
+- Pads play MIDI notes 0 to 15 and 36 to 51, so the pads, a keyboard and the sequencer all work.
+- SKIP LOOPS leaves out files that look like loops. MAX SIZE leaves out big files. Press RESCAN after changing either.
+- Very long files are cut to 15 seconds on the pad: PotentialKits is for one-shots.
+- If you move or delete a sample, its tile shows ! before the name.
+- Looks: Print Plate, Night Rack or Colour Block, on the SETUP page.
+- PotentialKits is a fork of Lucky Dip by sd88me. Thanks to him.
+
+Ideas, bugs and criticism are all welcome: github.com/PotentialBreakfast/mpc-vst-potentialkits
