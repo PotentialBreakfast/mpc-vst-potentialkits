@@ -99,6 +99,7 @@ int main() {
     CHECK(get(h, "pad2_pill") == "FX" && get(h, "sel_cat_fx_on") == "1", "per-pad pool override: %s", get(h, "pad2_pill").c_str());
     E->set_param(h, "sel_cat_synth", "1");
     CHECK(get(h, "pad2_pill") == "FX+", "two categories: %s", get(h, "pad2_pill").c_str());
+    std::this_thread::sleep_for(std::chrono::milliseconds(450));   /* a flip back within 400 ms is the same touch */
     E->set_param(h, "sel_cat_synth", "0");
     trig(h, "sel_reroll");
     CHECK(get(h, "sel_cat") == "fx", "pad 2 rerolled from the fx pool (%s)", get(h, "sel_cat").c_str());
@@ -162,6 +163,7 @@ int main() {
         CHECK(get(h3, "sel_cat_fx_on") == "1" && get(h3, "pad2_lock_on") == "1" && get(h3, "sel_lock_on") == "1", "back on pad 2: fx and lock lit");
         trig(h3, "unlock_all");
         CHECK(get(h3, "pad2_lock_on") == "0" && get(h3, "sel_lock_on") == "0", "Unlock All clears the lit locks");
+        std::this_thread::sleep_for(std::chrono::milliseconds(450));
         E->set_param(h3, "sel_cat_fx", "0");
     }
     /* link mode: symlinks beside the .xpm instead of copies; loops/size settings are saved in the state */
@@ -304,6 +306,35 @@ int main() {
         CHECK(get(k3, "pad1_name") == kit_now && get(k3, "status") == "Loaded USER 3", "and loads it: %s (%s)", get(k3, "pad1_name").c_str(), get(k3, "status").c_str());
         E->set_param(k3, "user_5", "1");
         CHECK(get(k3, "status") == "USER 5 is empty", "an empty slot loads nothing");
+        /* one touch on a drawn button arrives as two flips, on then straight back off (MPC One, 2026-11-14) */
+        std::this_thread::sleep_for(std::chrono::milliseconds(450));
+        while (mpc_engine_changed(k3, key, sizeof key)) {}
+        E->set_param(k3, "sel_pad", "4");
+        E->set_param(k3, "sel_lock", "1"); E->set_param(k3, "sel_lock", "0");
+        CHECK(get(k3, "pad4_lock_on") == "1" && get(k3, "tile_4").compare(0, 2, "* ") == 0, "LOCK: one touch (two flips) stays locked (%s)", get(k3, "tile_4").c_str());
+        std::this_thread::sleep_for(std::chrono::milliseconds(450));
+        E->set_param(k3, "sel_lock", "0"); E->set_param(k3, "sel_lock", "1");
+        CHECK(get(k3, "pad4_lock_on") == "0", "LOCK: a second touch unlocks");
+        E->set_param(k3, "user_save", "1"); E->set_param(k3, "user_save", "0");
+        CHECK(get(k3, "user_save") == "1", "SAVE: one touch (two flips) stays armed");
+        bool told = false; while (mpc_engine_changed(k3, key, sizeof key)) told |= !strcmp(key, "user_save");
+        CHECK(told, "SAVE: the host is told it is still on");
+        std::this_thread::sleep_for(std::chrono::milliseconds(150));
+        E->set_param(k3, "user_6", "1");
+        CHECK(get(k3, "user_6") == "USER 6" && get(k3, "status") == "Saved to USER 6", "SAVE then an EMPTY slot saves the rolled kit (%s)", get(k3, "status").c_str());
+        /* TYPE: AUTO, then one kind of sound at a time; the pad is rerolled to that kind */
+        E->set_param(k3, "sel_pad", "1");
+        trig(k3, "unlock_all");
+        for (int i = 0; i < 30 && get(k3, "sel_type").compare(0, 4, "AUTO") != 0; i++) trig(k3, "sel_type_prev");
+        CHECK(get(k3, "sel_type") == "AUTO: KICK", "TYPE on AUTO shows pad 1's usual sound (%s)", get(k3, "sel_type").c_str());
+        trig(k3, "sel_type_next");
+        CHECK(get(k3, "sel_type") == "KICK" && get(k3, "sel_cat_kick_on") == "1", "TYPE > KICK (%s)", get(k3, "sel_type").c_str());
+        trig(k3, "sel_type_next");
+        CHECK(get(k3, "sel_type") == "SNARE" && get(k3, "pad1_cat") == "snare", "TYPE > SNARE rerolls pad 1 to a snare (%s, %s, %s)", get(k3, "sel_type").c_str(), get(k3, "pad1_cat").c_str(), get(k3, "status").c_str());
+        trig(k3, "sel_type_prev"); trig(k3, "sel_type_prev");
+        CHECK(get(k3, "sel_type").compare(0, 4, "AUTO") == 0, "TYPE back to AUTO (%s)", get(k3, "sel_type").c_str());
+        trig(k3, "sel_type_prev");
+        CHECK(get(k3, "sel_type") == "OTHER", "TYPE wraps around (%s)", get(k3, "sel_type").c_str());
         E->destroy(k3);
         E->destroy(k);
     }

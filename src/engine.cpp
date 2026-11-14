@@ -783,6 +783,51 @@ struct Inst {
 
     /* ---- PotentialKits: styles, ROLL, the selected pad's sound, USER kits ---- */
     void mark_pads_dirty() { dirty |= D_SEL | D_GAINS; }
+    /* TYPE (KIT page): what the selected pad draws from, one tap at a time. AUTO is the pad's own default (a kick on
+     * A01, a snare on A02 ...); every other step is one kind of sound. The pad then gets a new sample of that kind
+     * (unless it is locked). The POOL page's mix-and-match keys are gone from the screen; their params still work. */
+    static const int *type_order(int *count) {
+        static const int T[] = {-1, C_KICK, C_SNARE, C_CLAP, C_RIM, C_CLOSED_HAT, C_OPEN_HAT, C_HAT, C_CRASH, C_RIDE,
+                                C_CYMBAL, C_TOM, C_CONGA, C_PERC, C_BASS, C_SYNTH, C_STAB, C_CHORD, C_LEAD, C_PAD, C_FX,
+                                C_GLITCH, C_VOX, C_OTHER};
+        *count = (int)(sizeof T / sizeof T[0]);
+        return T;
+    }
+    static int type_index(uint32_t pool) {     /* where a pad's pool sits in type_order: 0 AUTO, -1 a mix */
+        int n; const int *T = type_order(&n);
+        if (!pool) return 0;
+        for (int i = 1; i < n; i++) if (pool == 1u << T[i]) return i;
+        return -1;
+    }
+    void step_type(int dir) {
+        int i = sel, n; const int *T = type_order(&n);
+        bool locked;
+        {
+            std::lock_guard<std::mutex> l(mu);
+            int at = type_index(pads[i].pool);
+            if (at < 0) at = 0;
+            at = ((at + dir) % n + n) % n;
+            pads[i].pool = T[at] < 0 ? 0 : 1u << T[at];
+            sync_mirrors_locked();
+            locked = pads[i].locked;
+        }
+        if (locked) set_status("Pad " + std::to_string(i + 1) + " locked: unlock it");
+        else { reroll(i); trigger(i, 100); }
+        dirty |= D_SEL;
+    }
+    static std::string type_label(const Pad &p, int pad) {
+        static const char *const LONG[NCAT] = {
+            "KICK", "SNARE", "RIM", "CLAP", "HAT", "CLOSED HAT", "OPEN HAT", "TOM", "CONGA", "PERCUSSION", "CRASH", "RIDE",
+            "CYMBAL", "FX", "GLITCH", "VOX", "BASS", "SYNTH", "STAB", "CHORD", "LEAD", "PAD", "OTHER"};
+        if (!p.pool) {
+            uint32_t d = default_mask(pad);
+            for (int k = 0; k < NCAT; k++) if ((d >> k) & 1) return std::string("AUTO: ") + LONG[k] + ((d & ~(1u << k)) ? "+" : "");
+            return "AUTO";
+        }
+        int first = -1, cnt = 0;
+        for (int k = 0; k < NCAT; k++) if ((p.pool >> k) & 1) { if (first < 0) first = k; cnt++; }
+        return first < 0 ? "AUTO" : std::string(LONG[first]) + (cnt > 1 ? " MIX" : "");
+    }
     void apply_style(int st) {
         if (st < 0 || st >= NSTYLES) return;
         {
@@ -842,6 +887,17 @@ struct Inst {
             status = msg;
         }
         mark_pads_dirty();
+    }
+    /* One touch on a drawn button reaches the plugin as two flips 30 to 140 ms apart (on, then straight back off: the
+     * MPC One, 2026-11-14): LOCK showed * for a moment and unlocked, SAVE disarmed before the slot tap, the POOL keys did
+     * nothing. A change of the same switch within TWICE_MS of the last one is that second flip and is ignored; the host
+     * is told the real value again (the wrapper's "<key>_on" poll for LOCK, a change report for SAVE). */
+    std::map<std::string, long long> flip_ms;
+    bool flip_ok(const char *key) {
+        long long t = now_ms(), &last = flip_ms[key];
+        if (last && t - last < TWICE_MS) return false;
+        last = t;
+        return true;
     }
     bool tap_ok(long long *last) {           /* a tile or slot tap: not during a project load, not twice in one touch */
         long long t = now_ms();
@@ -1063,7 +1119,14 @@ void e_set_param(void *h, const char *key, const char *val) {
     if (!strncmp(key, "style_", 6)) { if (is_on(val)) in->apply_style(atoi(key + 6) - 1); return; }
     if (!strcmp(key, "dice")) { if (is_on(val)) in->roll(); return; }
     if (!strcmp(key, "wild")) { in->wild = std::max(0, std::min(2, (int)(atof(val) + 0.5))); return; }
-    if (!strcmp(key, "user_save")) { in->user_armed = is_on(val); return; }
+    if (!strcmp(key, "user_save")) {
+        bool on = is_on(val);
+        if (on == in->user_armed.load()) return;
+        if (!in->flip_ok(key)) { in->dirty |= D_SAVE; return; }   /* the touch's second flip: keep SAVE lit */
+        in->user_armed = on;
+        return;
+    }
+    if (!strcmp(key, "sel_type_prev") || !strcmp(key, "sel_type_next")) { if (is_on(val)) in->step_type(key[9] == 'n' ? 1 : -1); return; }
     if (!strncmp(key, "user_", 5)) { int n = atoi(key + 5) - 1; if (n >= 0 && n < NUSER) in->user_tap(n); return; }
     if (!strcmp(key, "generate")) { if (is_on(val)) in->generate(); return; }
     if (!strcmp(key, "clear_all")) { if (is_on(val)) in->clear_all(); return; }
@@ -1102,12 +1165,17 @@ void e_set_param(void *h, const char *key, const char *val) {
     else if (!strcmp(f, "pitch")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].pitch = (int)lround(std::max(-12.0, std::min(12.0, atof(val)))); }
     else if (!strcmp(f, "decay")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].decay = (int)lround(std::max(0.0, std::min(100.0, atof(val)))); }
     else if (!strcmp(f, "choke")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].choke = (int)lround(std::max(0.0, std::min(4.0, atof(val)))); }
-    else if (!strcmp(f, "lock")) { std::lock_guard<std::mutex> l(in->mu); in->pads[pad].locked = is_on(val); in->sync_mirrors_locked(); }
+    else if (!strcmp(f, "lock")) {
+        std::lock_guard<std::mutex> l(in->mu);
+        if (is_on(val) == in->pads[pad].locked || !in->flip_ok(key)) return;
+        in->pads[pad].locked = is_on(val); in->sync_mirrors_locked();
+    }
     else if (!strncmp(f, "cat_", 4)) {      /* sel_cat_<name>: one category in/out of the pad's pool */
         for (int k = 0; k < NCAT; k++) if (!strcmp(f + 4, CAT_NAME[k])) {
             std::lock_guard<std::mutex> l(in->mu);
             {   /* toggle one category in the pad's effective pool; ending up on the slot's default (or empty) means "default" again */
                 uint32_t def = Inst::default_mask(pad), cur = in->pads[pad].pool ? in->pads[pad].pool : def;
+                if (is_on(val) == (((cur >> k) & 1) != 0) || !in->flip_ok(key)) return;
                 if (is_on(val)) cur |= 1u << k; else cur &= ~(1u << k);
                 in->pads[pad].pool = (cur == def) ? 0 : cur;
             }
@@ -1209,6 +1277,8 @@ int e_get_param(void *h, const char *key, char *buf, int n) {
         }
         return put(buf, n, s);
     }
+    if (!strcmp(f, "type")) return put(buf, n, Inst::type_label(p, pad));
+    if (!strcmp(f, "type_prev") || !strcmp(f, "type_next")) return put(buf, n, "0");
     if (!strcmp(f, "gain")) return put(buf, n, std::to_string((int)(p.gain * 100.0f + 0.5f)));
     if (!strcmp(f, "lock")) return put(buf, n, "LOCK");
         if (!strcmp(f, "reroll") || !strcmp(f, "play") || !strcmp(f, "clear") || !strcmp(f, "fav") || !strcmp(f, "reject")) return put(buf, n, "0");
