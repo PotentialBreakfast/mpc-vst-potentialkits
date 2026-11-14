@@ -1,0 +1,2 @@
+# MPC TOOLS bench (Open MPC tools/bench.c -j) on an MPC One, MPC OS 3.10.1, MPC running, 2026-11-14, PotentialKits 1.0.0
+{"plugin": "PotentialKits", "instrument": 1, "open_ms": 1.8, "p99_pct": 3.1, "max_pct": 8.1, "threads_pct": 1.8, "verdict": "PASS", "triggers": 67, "trigger_max_pct": 3.5}
