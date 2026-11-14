@@ -1457,12 +1457,32 @@
    "options": [
     "START",
     "KIT",
-    "DIP",
-    "EXPORT",
-    "POOL",
+    "STYLES",
+    "SAVE",
     "HELP"
    ],
    "default": 0
+  },
+  {
+   "key": "sel_type",
+   "name": "Pad Type",
+   "min": 0,
+   "max": 0,
+   "display": "string"
+  },
+  {
+   "key": "sel_type_prev",
+   "name": "Pad Type Prev",
+   "min": 0,
+   "max": 1,
+   "momentary": true
+  },
+  {
+   "key": "sel_type_next",
+   "name": "Pad Type Next",
+   "min": 0,
+   "max": 1,
+   "momentary": true
   }
  ]
 }

@@ -4,7 +4,7 @@
 
 ![PotentialKits' KIT page on the MPC](docs/images/potentialkits.png)
 
-*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.0.0*
+*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.1.0*
 
 PotentialKits is a fork of **[Lucky Dip](https://github.com/sd88me/mpc-vst-luckydip)** by sd88me. It keeps Lucky Dip's engine (the library scan, the way samples are sorted, the random assignment, level matching and the MPC program export) and Lucky Dip's full history is in this repo. Thanks to sd88me.
 
@@ -27,7 +27,7 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 - **Scans your sample folders** and sorts every sample into one of 23 sounds (kick, snare, rim, clap, hat, closed hat, open hat, tom, conga, percussion, crash, ride, cymbal, fx, glitch, vox, bass, synth, stab, chord, lead, pad, other) from its folder and file names. No tagging by hand.
 - **Fills 16 pads at random**, like a real drum kit: a kick on A01, a snare on A02, hats, toms and percussion, and the top pads for surprises.
 - **Plays the kit** from the pads, a keyboard or the sequencer (MIDI notes 0-15 and 36-51).
-- **Lets you steer:** lock the pads you like, reroll the ones you don't, change what a pad may draw from (the **POOL** page), mark favourites (twice as likely to come up) and rejects (never again).
+- **Lets you steer:** lock the pads you like, reroll the ones you don't, and pick what a pad plays with **TYPE** (kick, snare, bass, vox ...): one tap and the pad gets a new sound of that type.
 - **MATCH LEVELS** evens out loud and quiet pads.
 - **EXPORT KIT** writes a normal MPC drum program (`.xpm`) with your 16 sounds on pads A01-A16.
 
@@ -35,13 +35,13 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 
 | Page | What's on it |
 |---|---|
-| **KIT** | **NEW KIT**, the 16 pad tiles, and the selected pad: its sample, **LOCK**, **PLAY**, **REROLL**, **CLEAR**, **GAIN**, **PITCH**, **DECAY**, **CHOKE**, **FAVOURITE** and **REJECT** |
-| **DIP** | **KIT STYLES**, **ROLL**, **USER KITS**, and **NEW KIT**, **CLEAR ALL**, **UNLOCK ALL**, **MATCH LEVELS**, **EXPORT KIT** |
-| **POOL** | What the selected pad draws from, grouped as drums, metals, tonal and texture. **FOLLOW PLAYED PAD** makes the selection follow the pad you play |
-| **SETUP** | Where samples come from and kits go, **RESCAN**, copy or link samples on export, **SKIP LOOPS**, **NO DUPLICATES**, **MAX SIZE**, and the **LOOK** |
+| **KIT** | **NEW KIT**, **ROLL**, the 16 pad tiles, and the selected pad: its sample, **TYPE**, **LOCK**, **REROLL**, **GAIN**, **PITCH**, **DECAY** and **CHOKE** |
+| **STYLES** | **KIT STYLES**, **ROLL KIT** with MILD / MEDIUM / WILD, **UNLOCK ALL**, **CLEAR ALL** |
+| **SAVE** | **USER KITS** (tap **SAVE**, then a slot), **EXPORT KIT**, **MATCH LEVELS** |
+| **SETUP** | Where samples come from and kits go, **RESCAN**, copy or link samples on export, **SKIP LOOPS**, **NO DUPLICATES**, **FOLLOW PLAYED PAD**, **MAX SIZE**, and the **LOOK** |
 | **MANUAL** | The manual, on the MPC's screen |
 
-![The DIP page](docs/images/potentialkits-dip.png)
+![The STYLES page (1.0 picture)](docs/images/potentialkits-dip.png)
 
 ## Where it finds your samples
 
@@ -79,7 +79,7 @@ PotentialKits comes in three looks: **Print Plate** (the default), **Night Rack*
 - **Samples aren't copied into your project.** If you move or delete one, its tile shows `!` before the name.
 - **Several PotentialKits tracks share one sample list.** If they use different sources, the last rescan wins.
 - **Linked kits** keep decay and gain only in the plugin, not in the MPC program.
-- **Not yet tested on an MPC.** Lucky Dip, which it is built on, is tested on a Live III and a Force. Please [tell me how it goes](../../issues/new/choose).
+- Tested on an MPC One (MPC OS 3.10.1). Lucky Dip, which it is built on, is tested on a Live III and a Force. Please [tell me how it goes](../../issues/new/choose).
 
 ## Will it work on my MPC?
 
