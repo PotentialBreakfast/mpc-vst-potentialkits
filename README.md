@@ -41,7 +41,7 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 | **SETUP** | Where samples come from and kits go, **RESCAN**, copy or link samples on export, **SKIP LOOPS**, **NO DUPLICATES**, **FOLLOW PLAYED PAD**, **MAX SIZE**, and the **LOOK** |
 | **MANUAL** | The manual, on the MPC's screen |
 
-![The STYLES page (1.0 picture)](docs/images/potentialkits-dip.png)
+![The STYLES page](docs/images/potentialkits-dip.png)
 
 ## Where it finds your samples
 
