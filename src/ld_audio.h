@@ -1,6 +1,6 @@
 /* Lucky Dip audio helpers: WAV/AIFF header walk (frame count, as the XPM export needs), decode to
  * 44.1 kHz int16 stereo for the pad voices, and RMS (wav_info.mjs, wav_rms.mjs). No host code.
- * PotentialKits 1.1.0: MP3 too, through dr_mp3 (dr_libs, public domain / MIT-0), compiled static into each file that
+ * PotentialKits 1.1.1: MP3 too, through dr_mp3 (dr_libs, public domain / MIT-0), compiled static into each file that
  * includes this header, so the tests and tools need nothing extra. */
 #pragma once
 #define DRMP3_API static

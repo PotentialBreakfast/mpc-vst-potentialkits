@@ -4,7 +4,7 @@
 
 ![PotentialKits' KIT page on the MPC](docs/images/potentialkits.png)
 
-*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.1.0*
+*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.1.1*
 
 PotentialKits is a fork of **[Lucky Dip](https://github.com/sd88me/mpc-vst-luckydip)** by sd88me. It keeps Lucky Dip's engine (the library scan, the way samples are sorted, the random assignment, level matching and the MPC program export) and Lucky Dip's full history is in this repo. Thanks to sd88me.
 

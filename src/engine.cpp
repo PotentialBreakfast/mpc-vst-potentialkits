@@ -495,7 +495,7 @@ struct Inst {
         for (int i = 0; i < NPADS; i++) {
             const Pad &p = j.pads[i];
             if (!p.has || !j.pcm[i]) continue;
-            /* 1.1.0: the MPC loads only WAVs beside a program, so an MP3 pad is always written as a WAV (as heard), even
+            /* 1.1.1: the MPC loads only WAVs beside a program, so an MP3 pad is always written as a WAV (as heard), even
              * in a linked kit */
             bool mp3 = is_mp3(p.sample.path);
             if (!mp3 && (j.link || (p.pitch == 0 && p.decay >= 100 && fabsf(p.gain - 1.0f) < 0.005f))) continue;
