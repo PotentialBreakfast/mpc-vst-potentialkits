@@ -9,3 +9,7 @@ PotentialKits is a fork of **Lucky Dip** by sd88me ([sd88me/mpc-vst-luckydip](ht
 | Fonts | `vst/skin/looks/fonts/` | SIL Open Font License 1.1 (the `OFL-*.txt` files beside them) |
 
 PotentialKits isn't affiliated with or endorsed by Akai Professional or inMusic.
+
+## dr_mp3 (David Reid) – public domain (Unlicense) or MIT-0
+
+`src/vendor/dr_mp3.h`, from https://github.com/mackron/dr_libs (commit 35b5c392cc15456736c440a68dbe073178bbffe0), reads MP3 sounds. Its licence is at the end of the file.

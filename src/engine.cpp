@@ -492,9 +492,13 @@ struct Inst {
          * with PITCH as the program's tune. CHOKE becomes the program's mute group either way. */
         std::vector<int16_t> heard[NPADS];
         const std::vector<int16_t> *rendered[NPADS] = {0};
-        for (int i = 0; i < NPADS && !j.link; i++) {
+        for (int i = 0; i < NPADS; i++) {
             const Pad &p = j.pads[i];
-            if (!p.has || !j.pcm[i] || (p.pitch == 0 && p.decay >= 100 && fabsf(p.gain - 1.0f) < 0.005f)) continue;
+            if (!p.has || !j.pcm[i]) continue;
+            /* 1.1.0: the MPC loads only WAVs beside a program, so an MP3 pad is always written as a WAV (as heard), even
+             * in a linked kit */
+            bool mp3 = is_mp3(p.sample.path);
+            if (!mp3 && (j.link || (p.pitch == 0 && p.decay >= 100 && fabsf(p.gain - 1.0f) < 0.005f))) continue;
             render_pad(*j.pcm[i], p, heard[i]);
             if (!heard[i].empty()) rendered[i] = &heard[i];
         }
