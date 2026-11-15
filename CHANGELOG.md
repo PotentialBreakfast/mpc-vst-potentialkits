@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0 (2026-11-15)
+
+- A fourth look, **Vintage** (Potential1200's late-80s drum-machine look), on the LOOK keys.
+
 ## 1.1.1 (2026-11-14)
 - **MP3 sounds.** MP3 files in your sound folders are found and played like WAV and AIFF. When you export a kit, an MP3 pad is saved as a WAV beside the program, because the MPC loads WAVs there.
 

@@ -4,7 +4,7 @@
 
 ![PotentialKits' KIT page on the MPC](docs/images/potentialkits.png)
 
-*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.1.1*
+*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.2.0*
 
 PotentialKits is a fork of **[Lucky Dip](https://github.com/sd88me/mpc-vst-luckydip)** by sd88me. It keeps Lucky Dip's engine (the library scan, the way samples are sorted, the random assignment, level matching and the MPC program export) and Lucky Dip's full history is in this repo. Thanks to sd88me.
 
@@ -20,7 +20,7 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 - **USER KITS:** 8 slots. Tap **SAVE**, then a slot, to keep the whole kit; tap a slot to bring it back in any project. They're kept beside your VST2 Plugins folder, so updates keep them.
 - **The KIT page:** the 16 pads as tiles laid out like the MPC's own (A01 bottom left). Tap one to hear it and edit it beside them.
 - **Exports as you hear it.** A pad with its pitch, decay or gain changed is written as a new WAV, exactly as it plays in the plugin; the choke groups become the program's mute groups.
-- **The PotentialSuite looks** (Print Plate, Night Rack, Colour Block) and a **MANUAL** page on the MPC's screen.
+- **The PotentialSuite looks** (Print Plate, Night Rack, Colour Block, Vintage) and a **MANUAL** page on the MPC's screen.
 
 ## What it does
 
@@ -68,9 +68,9 @@ You don't have to type any paths. By default it scans the **Expansions** and **S
   Updates keep this folder.
 - **`PotentialSuite Presets/PotentialKits/`** beside your VST2 Plugins folder: the USER KITS, one file each.
 
-## Three looks
+## Four looks
 
-PotentialKits comes in three looks: **Print Plate** (the default), **Night Rack** and **Colour Block**. Open the **SETUP** page and tap one of the LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again.
+PotentialKits comes in four looks: **Print Plate** (the default), **Night Rack**, **Colour Block** and **Vintage** (a late-80s drum machine: warm grey panel, cream keys, an amber display). Open the **SETUP** page and tap one of the LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again.
 
 ## Limitations
 
