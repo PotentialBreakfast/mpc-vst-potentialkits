@@ -118,3 +118,10 @@ See [BUILD.md](BUILD.md).
 - Made with help from Claude (Anthropic).
 
 MIT, see [LICENSE](LICENSE). Not affiliated with or endorsed by Akai Professional or inMusic. MPC is their trademark.
+
+---
+
+## Tested on
+
+MPC One (Gen1) on standard Akai firmware 3.10.1 and on the latest HAKAI firmware (USB-boot method). Gen2 64-bit builds pass Akai's checks but have had limited real-device testing so far.
+
