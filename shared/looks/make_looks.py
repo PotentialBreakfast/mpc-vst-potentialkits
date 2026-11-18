@@ -129,30 +129,6 @@ def wave_strip(own, path):
 
 def background(look, own, a):
     """The plate behind everything (1280 x 628): print marks in the corners, rack screws, or the plain colour field."""
-    if look == "hifi":      # walnut cheeks, a grained charcoal faceplate, cross-head screws, a pinstripe in the plugin's colour
-        screws = "".join(
-            '<circle cx="%d" cy="%d" r="5" fill="url(#hf-screw)" stroke="#0b0c0e" stroke-width="1"/>'
-            '<path d="M%g %g h6 M%g %g v6" stroke="#2b2c30" stroke-width="1.4"/>' % (x, y, x - 3, y, x, y - 3)
-            for x, y in ((24, 8), (1256, 8), (24, 620), (1256, 620)))
-        wood = lambda x: ('<rect x="%d" width="12" height="628" fill="#6d4527" filter="url(#hf-wood)"/>'
-                          '<rect x="%d" width="12" height="628" fill="url(#hf-cheek)"/>' % (x, x))
-        return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 628"><defs>'
-                '<filter id="hf-wood" x="0" y="0" width="100%%" height="100%%">'
-                '<feTurbulence type="fractalNoise" baseFrequency="0.9 0.012" numOctaves="3" seed="11" result="g"/>'
-                '<feColorMatrix in="g" type="matrix" values="0 0 0 0 0.12  0 0 0 0 0.07  0 0 0 0 0.03  0 0 0 -0.9 0.62" result="d"/>'
-                '<feComposite in="d" in2="SourceGraphic" operator="atop"/></filter>'
-                '<filter id="hf-plate" x="0" y="0" width="100%%" height="100%%">'
-                '<feTurbulence type="fractalNoise" baseFrequency="0.004 0.9" numOctaves="2" seed="5" result="b"/>'
-                '<feColorMatrix in="b" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.03 0" result="w"/>'
-                '<feComposite in="w" in2="SourceGraphic" operator="atop"/></filter>'
-                '<linearGradient id="hf-cheek" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity="0.45"/>'
-                '<stop offset="0.5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></linearGradient>'
-                '<linearGradient id="hf-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1e22"/>'
-                '<stop offset="1" stop-color="#131417"/></linearGradient>'
-                '<radialGradient id="hf-screw" cx="0.38" cy="0.32" r="0.8"><stop offset="0" stop-color="#d9dadc"/>'
-                '<stop offset="0.6" stop-color="#8d8f94"/><stop offset="1" stop-color="#4a4c50"/></radialGradient></defs>'
-                '<rect width="1280" height="628" fill="url(#hf-face)" filter="url(#hf-plate)"/>%s%s'
-                '<rect x="12" y="624" width="1256" height="2" fill="#%s"/>%s</svg>' % (wood(0), wood(1268), a, screws))
     if look == "vintage":   # the panel, a darker strip along the bottom and four screws
         screws = "".join('<circle cx="%d" cy="%d" r="4" fill="#a79f8d" stroke="#2a2723" stroke-width="1.2"/>'
                          '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#2a2723" stroke-width="1.2"/>' % (x, y, x - 2.5, y - 2.5, x + 2.5, y + 2.5)
@@ -315,11 +291,13 @@ def make(vst):
         a = cfg["accent"].get(look, cfg["accent"]["rack"]).lower()   # a dark look without its own colour takes Night Rack's
         theme, own = palette(look, a, cfg["accent"]["rack"].lower())
         own["lcd"] = theme["lcd"]
-        bgfile = "skin/looks/_bg_%s.svg" % look
+        bgfile = "skin/looks/_bg_%s.%s" % (look, "png" if look == "hifi" else "svg")
         out = ["# %s: the %s look. Made by shared/looks/make_looks.py from layout.base.conf: edit that file, not this one."
                % (cfg.get("name", "Potential plugin"), TITLES[look])]
         out += ["theme_%s=%s" % kv for kv in theme.items()]
         out += ["art_css=skin/looks/_%s.css" % look]
+        if look == "hifi":    # drawn pictures: knobs as a filmstrip, the page, and the gradients / filters hifi.css uses
+            out += ["art_defs=skin/looks/_hifi_defs.svg", "knob_strip=skin/looks/_knob_hifi.png"]
         hero_r = the_r
         made = set()
         tab, placed = None, False
@@ -361,6 +339,8 @@ def make(vst):
                 s += " tcolor=%s" % own["disp"]
             if kind == "knob" and attr(s, "key") in heroes:
                 s = re.sub(r"\br=\d+", "r=%d" % hero_r, s, count=1)
+                if look == "hifi" and not any(attr(s, k) for k in ("look", "img", "strip")):
+                    s += " strip=skin/looks/_knob_hifi_hero.png"
             out.append(s)
         if tab == "SETUP" and not placed:
             out += look_block(own)
@@ -380,7 +360,11 @@ def make(vst):
             if os.path.exists(os.path.join(ldir, extra)):
                 css += "\n" + open(os.path.join(ldir, extra)).read()
         open(os.path.join(ldir, "_%s.css" % look), "w").write(css)
-        open(os.path.join(ldir, "_bg_%s.svg" % look), "w").write(background(look, own, a))
+        if look == "hifi":
+            import hifi_art
+            hifi_art.write_all(ldir, a)
+        else:
+            open(os.path.join(ldir, "_bg_%s.svg" % look), "w").write(background(look, own, a))
     return [FILES[k] for k in LOOKS]
 
 

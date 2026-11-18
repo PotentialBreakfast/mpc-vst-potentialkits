@@ -38,7 +38,7 @@ The full PotentialSuite manual: github.com/PotentialBreakfast/potential-plugins
 - Sounds are sorted by their folder and file names: a folder called Kicks, or a file called punchy_kick_01.wav, is a kick.
 - SKIP LOOPS leaves out files that look like loops. MAX SIZE leaves out big files. Press RESCAN after changing either.
 - Very long files are cut to 15 seconds on the pad. If you move or delete a sample, its tile shows ! before the name.
-- Looks: Print Plate, Night Rack, Colour Block or Vintage, on the SETUP page.
+- Looks: Print Plate, Night Rack, Colour Block, Vintage or Hi-Fi, on the SETUP page.
 - PotentialKits is a fork of Lucky Dip by sd88me. Thanks to him.
 
 Ideas, bugs and criticism are all welcome: github.com/PotentialBreakfast/mpc-vst-potentialkits

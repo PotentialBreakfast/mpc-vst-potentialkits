@@ -20,7 +20,7 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 - **USER KITS:** 8 slots. Tap **SAVE**, then a slot, to keep the whole kit; tap a slot to bring it back in any project. They're kept beside your VST2 Plugins folder, so updates keep them.
 - **The KIT page:** the 16 pads as tiles laid out like the MPC's own (A01 bottom left). Tap one to hear it and edit it beside them.
 - **Exports as you hear it.** A pad with its pitch, decay or gain changed is written as a new WAV, exactly as it plays in the plugin; the choke groups become the program's mute groups.
-- **The PotentialSuite looks** (Print Plate, Night Rack, Colour Block, Vintage) and a **MANUAL** page on the MPC's screen.
+- **The PotentialSuite looks** (Print Plate, Night Rack, Colour Block, Vintage, Hi-Fi) and a **MANUAL** page on the MPC's screen.
 
 ## What it does
 
@@ -68,9 +68,9 @@ You don't have to type any paths. By default it scans the **Expansions** and **S
   Updates keep this folder.
 - **`PotentialSuite Presets/PotentialKits/`** beside your VST2 Plugins folder: the USER KITS, one file each.
 
-## Four looks
+## Five looks
 
-PotentialKits comes in four looks: **Print Plate** (the default), **Night Rack**, **Colour Block** and **Vintage** (a late-80s drum machine: warm grey panel, cream keys, an amber display). Open the **SETUP** page and tap one of the LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again.
+PotentialKits comes in five looks: **Print Plate** (the default), **Night Rack**, **Colour Block**, **Vintage** (a late-80s drum machine: warm grey panel, cream keys, an amber display) and **Hi-Fi** (PotentialBox's look: walnut cheeks, a brushed charcoal faceplate, domed knobs lit in the plugin's colour, moulded cream keys, green glass displays). Open the **SETUP** page and tap one of the LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again.
 
 ## Limitations
 
