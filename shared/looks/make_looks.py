@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PotentialSuite looks: one layout, three looks.
+"""PotentialSuite looks: one layout, five looks.
 
     make_looks.py <port>/vst        writes vst/layout.conf (Print Plate, the default), vst/layout.rack.conf (Night Rack)
                                     and vst/layout.block.conf (Colour Block) from vst/layout.base.conf, plus each look's
@@ -24,10 +24,11 @@ import os
 import re
 import sys
 
-# Print Plate first (the default), then Night Rack, Colour Block and Vintage (from Potential1200).
-LOOKS = ("print", "rack", "block", "vintage")
-TITLES = {"print": "Print Plate", "rack": "Night Rack", "block": "Colour Block", "vintage": "Vintage"}
-FILES = {"print": "layout.conf", "rack": "layout.rack.conf", "block": "layout.block.conf", "vintage": "layout.vintage.conf"}
+# Print Plate first (the default), then Night Rack, Colour Block, Vintage (from Potential1200) and Hi-Fi (from PotentialBox).
+LOOKS = ("print", "rack", "block", "vintage", "hifi")
+TITLES = {"print": "Print Plate", "rack": "Night Rack", "block": "Colour Block", "vintage": "Vintage", "hifi": "Hi-Fi"}
+FILES = {"print": "layout.conf", "rack": "layout.rack.conf", "block": "layout.block.conf", "vintage": "layout.vintage.conf",
+         "hifi": "layout.hifi.conf"}
 
 
 def mix(a, b, t):
@@ -40,7 +41,15 @@ def palette(look, a, lit):
     the colours its own lines and pictures use: title (headline text), dim (quiet captions), disp (live text in a
     display window), key / primary (a button's own fill), cool (a second caption colour), m_* (meter pictures),
     w_* (the waveform strip)."""
-    if look == "vintage":   # a late-80s drum machine: warm grey panel, beige keys, an amber display, the plugin's colour for what is selected
+    if look == "hifi":      # a hi-fi deck: charcoal plate in walnut, domed knobs lit in the plugin's colour, cream keys, green glass
+        t = dict(bg="17181b", panel="17181b", line="5d5a50", ink="ece6d6", ink_dim="b3ad9e", ink_faint="7d786b",
+                 accent=a, accent_hi="f4efe0", knob_face="24252a", knob_ring="34353b", knob_dot=a,
+                 seg_active="f2c879", seg_inactive="2a2b2f", seg_active_tx="241d12", btn_text="241d12",
+                 btn_bg="d8d2c2", btn_on="f2c879", tile_on="3a3b42", lcd="0b140e", box="0b140e")
+        own = dict(title="f4efe0", dim="b3ad9e", disp="8cffb0", key="d8d2c2", plate="17181b", cool="b3ad9e", primary="f2c879",
+                   m_bg="0b140e", m_off="16241a", m_on="8cffb0", m_hi="d8ffe4", m_cool="b3ad9e", m_mid="f4efe0",
+                   w_bar="5f8a6c", w_cue=a, w_selbg="16241a", w_sel="8cffb0", glow=True)
+    elif look == "vintage":   # a late-80s drum machine: warm grey panel, beige keys, an amber display, the plugin's colour for what is selected
         t = dict(bg="bdb6a6", panel="bdb6a6", line="2a2723", ink="2a2723", ink_dim="3a352e", ink_faint="6f675a",
                  accent=a, accent_hi="2a2723", knob_face="2a2723", knob_ring="2a2723", knob_dot="f2a33a",
                  seg_active="2a2723", seg_inactive="e6dcc6", seg_active_tx="f2a33a", btn_text="2a2723",
@@ -120,6 +129,30 @@ def wave_strip(own, path):
 
 def background(look, own, a):
     """The plate behind everything (1280 x 628): print marks in the corners, rack screws, or the plain colour field."""
+    if look == "hifi":      # walnut cheeks, a grained charcoal faceplate, cross-head screws, a pinstripe in the plugin's colour
+        screws = "".join(
+            '<circle cx="%d" cy="%d" r="5" fill="url(#hf-screw)" stroke="#0b0c0e" stroke-width="1"/>'
+            '<path d="M%g %g h6 M%g %g v6" stroke="#2b2c30" stroke-width="1.4"/>' % (x, y, x - 3, y, x, y - 3)
+            for x, y in ((24, 8), (1256, 8), (24, 620), (1256, 620)))
+        wood = lambda x: ('<rect x="%d" width="12" height="628" fill="#6d4527" filter="url(#hf-wood)"/>'
+                          '<rect x="%d" width="12" height="628" fill="url(#hf-cheek)"/>' % (x, x))
+        return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 628"><defs>'
+                '<filter id="hf-wood" x="0" y="0" width="100%%" height="100%%">'
+                '<feTurbulence type="fractalNoise" baseFrequency="0.9 0.012" numOctaves="3" seed="11" result="g"/>'
+                '<feColorMatrix in="g" type="matrix" values="0 0 0 0 0.12  0 0 0 0 0.07  0 0 0 0 0.03  0 0 0 -0.9 0.62" result="d"/>'
+                '<feComposite in="d" in2="SourceGraphic" operator="atop"/></filter>'
+                '<filter id="hf-plate" x="0" y="0" width="100%%" height="100%%">'
+                '<feTurbulence type="fractalNoise" baseFrequency="0.004 0.9" numOctaves="2" seed="5" result="b"/>'
+                '<feColorMatrix in="b" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.03 0" result="w"/>'
+                '<feComposite in="w" in2="SourceGraphic" operator="atop"/></filter>'
+                '<linearGradient id="hf-cheek" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity="0.45"/>'
+                '<stop offset="0.5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></linearGradient>'
+                '<linearGradient id="hf-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1e22"/>'
+                '<stop offset="1" stop-color="#131417"/></linearGradient>'
+                '<radialGradient id="hf-screw" cx="0.38" cy="0.32" r="0.8"><stop offset="0" stop-color="#d9dadc"/>'
+                '<stop offset="0.6" stop-color="#8d8f94"/><stop offset="1" stop-color="#4a4c50"/></radialGradient></defs>'
+                '<rect width="1280" height="628" fill="url(#hf-face)" filter="url(#hf-plate)"/>%s%s'
+                '<rect x="12" y="624" width="1256" height="2" fill="#%s"/>%s</svg>' % (wood(0), wood(1268), a, screws))
     if look == "vintage":   # the panel, a darker strip along the bottom and four screws
         screws = "".join('<circle cx="%d" cy="%d" r="4" fill="#a79f8d" stroke="#2a2723" stroke-width="1.2"/>'
                          '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#2a2723" stroke-width="1.2"/>' % (x, y, x - 2.5, y - 2.5, x + 2.5, y + 2.5)
@@ -145,6 +178,9 @@ def hero_css(look, r):
     """The main knob (the only one of radius r) wears the plugin's colour."""
     f = '.knob-face[r="%d"]' % (r - 2)
     s = '.knob-sheen[r="%d"]' % (r - 2)
+    if look == "hifi":
+        return ("%s { stroke: var(--accent); stroke-width: 3; }\n"
+                "%s ~ .knob-pointer { stroke: var(--accent); }\n" % (f, f))
     if look in ("print", "vintage"):
         return ("%s { fill: var(--accent); stroke: var(--p-ink); stroke-width: 3; }\n"
                 "%s { fill: #fff; opacity: 0.16; }\n" % (f, s))
@@ -170,7 +206,7 @@ def look_block(own):
 
 
 def settings_tab(look, own, bgfile):
-    big = {"print": 2.6, "rack": 2.6, "block": 3.0, "vintage": 2.6}[look]
+    big = {"print": 2.6, "rack": 2.6, "block": 3.0, "vintage": 2.6, "hifi": 2.6}[look]
     return [
         "[tab SETTINGS]",
         "art file=%s" % bgfile,
@@ -276,7 +312,7 @@ def make(vst):
         while the_r in others:
             the_r += 1
     for look in LOOKS:
-        a = cfg["accent"][look].lower()
+        a = cfg["accent"].get(look, cfg["accent"]["rack"]).lower()   # a dark look without its own colour takes Night Rack's
         theme, own = palette(look, a, cfg["accent"]["rack"].lower())
         own["lcd"] = theme["lcd"]
         bgfile = "skin/looks/_bg_%s.svg" % look

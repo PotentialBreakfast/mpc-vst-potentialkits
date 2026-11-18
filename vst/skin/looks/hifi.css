@@ -1,0 +1,89 @@
+/* PotentialSuite look E, "Hi-Fi" (PotentialBox's own look): a hi-fi deck. A charcoal faceplate set in walnut cheeks,
+ * domed black knobs with a lit value arc in the plugin's colour, moulded cream keys with a soft shadow under them,
+ * amber for whatever is selected, green glass displays. Jost + DM Mono (SIL OFL, fonts/).
+ * An original design: it copies no maker's panel.
+ * Only looks change here: every control stays where the layout puts it. */
+@font-face { font-family: "Jost"; font-weight: 400; src: url("fonts/Jost-400.woff2"); }
+@font-face { font-family: "Jost"; font-weight: 600; src: url("fonts/Jost-600.woff2"); }
+@font-face { font-family: "Jost"; font-weight: 700; src: url("fonts/Jost-700.woff2"); }
+@font-face { font-family: "DM Mono"; font-weight: 400; src: url("fonts/DMMono-400.woff2"); }
+@font-face { font-family: "DM Mono"; font-weight: 500; src: url("fonts/DMMono-500.woff2"); }
+@font-face { font-family: "Plex Cond"; font-weight: 700; src: url("fonts/PlexCond-700.woff2"); }
+
+:root {
+  --font: "Jost", "Titillium Web", sans-serif;
+  --mono: "DM Mono", "Titillium Web", monospace;
+  --title-font: var(--font);
+  --title-size: 23px;
+  --label-size: 15px;
+  --seg-size: 14px;
+  --button-size: 20px;
+  --radius: 8px;
+  --sheen: 0.22;
+  --shadow: none;
+  --h-ink: #ece6d6;
+  --h-dim: #b3ad9e;
+  --h-cream: #d8d2c2;
+  --h-amber: #f2c879;
+  --h-glass: #0b140e;
+  --h-vfd: #8cffb0;
+  --h-plate: #202127;
+  --h-rule: #5d5a50;
+  --h-drop: drop-shadow(0 3px 2.5px rgba(0, 0, 0, 0.7));
+}
+text { font-family: var(--font); font-weight: 600; }
+
+/* panels: a slightly raised plate on the faceplate, a fine rule under the title */
+.frame-border { fill: var(--h-plate); stroke: #3a3934; stroke-width: 1.5; rx: 8px;
+                filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55)); }
+.frame-rule { stroke: var(--h-rule); stroke-width: 1.5; }
+.frame-title { font-family: var(--font); font-weight: 700; font-size: var(--title-size); fill: var(--h-ink);
+               letter-spacing: 0.1em; }
+.text { font-family: var(--font); font-weight: 700; letter-spacing: 0.1em; fill: var(--h-dim); }
+
+/* knobs: a domed black cap with a cast shadow and a highlight, a cream pointer, the value lit in the plugin's colour */
+.knob-track { stroke: #34353b; stroke-width: 5px !important; stroke-linecap: round; }
+.knob-arc { stroke: var(--accent); stroke-width: 5px !important; stroke-linecap: round;
+            filter: drop-shadow(0 0 3px var(--accent)); }
+.knob-face { fill: url(#dome-radial); stroke: #4b4942; stroke-width: 1.5; filter: drop-shadow(0 5px 4px rgba(0, 0, 0, 0.75)); }
+.knob-sheen { fill: url(#sheen-radial); opacity: 0.4; transform-box: fill-box; transform-origin: center; transform: scale(0.86); }
+.knob-pointer { stroke: #f2ecdc; stroke-linecap: round; }
+
+/* switches */
+.pill-track { fill: var(--h-glass); stroke: #3a3934; stroke-width: 1.5; }
+.pill-thumb { fill: var(--h-cream); filter: var(--h-drop); }
+.on .pill-track { fill: var(--accent); }
+.on .pill-thumb { fill: #f4efe0; filter: var(--h-drop); }
+
+/* buttons: moulded keys with a lit top edge and a shadow under them */
+.button-bg { stroke: #0e0f12; stroke-width: 1.5; filter: var(--h-drop); }
+.button-sheen { fill: url(#key-gloss); }
+.button-tx { font-family: var(--font); font-weight: 700; font-size: var(--button-size); letter-spacing: 0.02em; fill: #241d12; }
+
+/* option segments */
+.seg-bg { stroke: #0e0f12; stroke-width: 1.5; filter: drop-shadow(0 2px 1.5px rgba(0, 0, 0, 0.6)); }
+.seg-sheen { fill: url(#key-gloss); opacity: 0.45; }
+/* option names are set in a condensed face so long ones fit their keys */
+.seg-tx { font-family: "Plex Cond", var(--font); font-weight: 700; font-size: var(--seg-size); letter-spacing: 0.04em; }
+
+/* text boxes: green glass display windows */
+.box-label { font-family: var(--font); font-weight: 700; letter-spacing: 0.1em; fill: var(--h-dim); }
+.box { fill: var(--h-glass); stroke: #2c3a30; stroke-width: 2; rx: 5px; }
+.arrow-bg { fill: #2a2b2f; stroke: #0e0f12; stroke-width: 1.5; filter: var(--h-drop); }
+.arrow { fill: var(--h-amber); }
+
+/* list rows */
+.tile-border { stroke: #3a3934; }
+.tile-rule { fill: #2c3a30; }
+
+/* sliders */
+.slider-well { fill: var(--h-glass); stroke: #3a3934; stroke-width: 1.5; }
+.slider-fill { fill: var(--accent); }
+.slider-thumb { fill: var(--h-cream); stroke: #0e0f12; stroke-width: 1.5; filter: var(--h-drop); }
+
+/* faders: a dark slot with printed ticks, a cream cap with a line in the plugin's colour */
+.look-slot { fill: #0b0c0e; stroke: #3a3934; stroke-width: 1; }
+.look-tick { stroke: var(--h-dim); stroke-width: 1.5; }
+.look-fader { fill: var(--h-cream); stroke: #0e0f12; stroke-width: 1.5; filter: var(--h-drop); }
+.look-ridge { stroke: #b6af9e; stroke-width: 1.5; }
+.look-line { stroke: var(--accent); }
