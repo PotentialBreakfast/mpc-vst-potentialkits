@@ -2,7 +2,7 @@
 
 You don't need to build it to use it: download the zip from [Releases](../../releases). This is for people who want to change it.
 
-It's built with the [Open MPC kit](https://github.com/open-mpc/mpc-vst-plugins), and needs Linux or WSL, `gcc`/`g++`, Python 3, `pip install ziglang pillow playwright` and `python -m playwright install chromium`. `.github/workflows/release.yml` has the exact, current commands, including the kit commit it's pinned to.
+It's built with the [Open MPC kit](https://github.com/open-mpc/mpc-vst-plugins), and needs Linux or WSL, `gcc`/`g++`, Python 3, `pip install ziglang pillow numpy playwright` and `python -m playwright install chromium`. `.github/workflows/release.yml` has the exact, current commands, including the kit commit it's pinned to.
 
 ```
 git clone https://github.com/open-mpc/mpc-vst-plugins
